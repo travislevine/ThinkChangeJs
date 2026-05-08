@@ -19,6 +19,7 @@ import { Separator } from "@/components/ui/separator"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { Toaster } from "@/components/ui/sonner"
+import { ThemeToggle } from "@/components/shared/ThemeToggle"
 
 export default function Home() {
   return (
@@ -26,7 +27,10 @@ export default function Home() {
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 py-6">
         <header className="flex items-center justify-between gap-3">
           <h1 className="text-lg font-semibold">BikePark UI smoke test</h1>
-          <Badge variant="secondary">Phase 0.2</Badge>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <Badge variant="secondary">Phase 0.3</Badge>
+          </div>
         </header>
 
         <Separator />
