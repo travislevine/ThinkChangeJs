@@ -1,5 +1,7 @@
 "use client"
 
+import * as React from "react"
+
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -56,6 +58,10 @@ export default function Home() {
 }
 
 function UiSample() {
+  const [isVerified, setIsVerified] = React.useState<boolean>(false)
+  const [isToggled, setIsToggled] = React.useState<boolean>(false)
+  const [deviceType, setDeviceType] = React.useState<string>("")
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
@@ -73,7 +79,7 @@ function UiSample() {
 
       <div className="grid gap-2">
         <Label>Device type</Label>
-        <Select>
+        <Select value={deviceType} onValueChange={setDeviceType}>
           <SelectTrigger>
             <SelectValue placeholder="Select a device type" />
           </SelectTrigger>
@@ -92,11 +98,19 @@ function UiSample() {
 
       <div className="flex flex-wrap items-center gap-6">
         <div className="flex items-center gap-2">
-          <Checkbox id="verified" />
+          <Checkbox
+            id="verified"
+            checked={isVerified}
+            onCheckedChange={(value) => setIsVerified(value === true)}
+          />
           <Label htmlFor="verified">Verified</Label>
         </div>
         <div className="flex items-center gap-2">
-          <Switch id="toggle" />
+          <Switch
+            id="toggle"
+            checked={isToggled}
+            onCheckedChange={(value) => setIsToggled(value === true)}
+          />
           <Label htmlFor="toggle">Toggle</Label>
         </div>
       </div>
