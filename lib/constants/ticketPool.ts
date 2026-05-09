@@ -1,0 +1,3 @@
+export const TICKET_NUMBER_POOL_MIN = 1
+
+export const TICKET_NUMBER_POOL_MAX = 1500
