@@ -19,6 +19,7 @@ import { COLOURS } from "@/lib/constants/colours"
 import { DEVICE_CATEGORIES } from "@/lib/constants/deviceCategories"
 import { TICKET_NUMBER_POOL_MAX, TICKET_NUMBER_POOL_MIN } from "@/lib/constants/ticketPool"
 import type { DropOffBlankEntryFormState, DropOffDeviceRow } from "@/lib/types/dropOffForm"
+import { useCreateDropOffTicket } from "@/hooks/useCreateDropOffTicket"
 import { useTicketNumberAvailability } from "@/hooks/useTicketNumberAvailability"
 
 export interface BlankEntryFormProps {
@@ -132,6 +133,7 @@ function validateBlankEntry(
 
 export function BlankEntryForm({ onTouched }: BlankEntryFormProps) {
   const [state, setState] = React.useState<DropOffBlankEntryFormState>(() => defaultState())
+  const { create, isSubmitting, error: submitError } = useCreateDropOffTicket()
 
   const ticketNumberInt = React.useMemo(() => parseTicketNumber(state.ticketNumber), [state.ticketNumber])
   const ticketAvailability = useTicketNumberAvailability(ticketNumberInt)
@@ -143,25 +145,25 @@ export function BlankEntryForm({ onTouched }: BlankEntryFormProps) {
   }, [state, submitAttempted, ticketAvailability.inUse, ticketNumberInt])
 
   const touched = React.useMemo(() => {
-    const initial = defaultState()
+    const initialDevices = defaultState().devices
+    const initialFirst = initialDevices[0]
     return (
-      state.ticketNumber !== initial.ticketNumber ||
-      state.patronName !== initial.patronName ||
-      state.mobile !== initial.mobile ||
-      state.email !== initial.email ||
-      state.deviceCountPreset !== initial.deviceCountPreset ||
-      state.deviceCountCustom !== initial.deviceCountCustom ||
-      state.notes !== initial.notes ||
-      state.devices.length !== initial.devices.length ||
-      state.devices.some((d, i) => {
-        const base = initial.devices[i]
-        if (!base) return true
-        return (
-          d.deviceType !== base.deviceType ||
-          d.quantity !== base.quantity ||
-          d.colour !== base.colour
-        )
-      })
+      state.ticketNumber.trim().length > 0 ||
+      state.patronName.trim().length > 0 ||
+      state.mobile.trim().length > 0 ||
+      state.email.trim().length > 0 ||
+      state.deviceCountPreset !== "1" ||
+      state.deviceCountCustom.trim().length > 0 ||
+      state.notes.trim().length > 0 ||
+      state.devices.length !== 1 ||
+      (initialFirst
+        ? state.devices.some(
+            (d) =>
+              d.deviceType !== initialFirst.deviceType ||
+              d.quantity !== initialFirst.quantity ||
+              d.colour !== initialFirst.colour
+          )
+        : state.devices.length > 0)
     )
   }, [state])
 
@@ -339,22 +341,45 @@ export function BlankEntryForm({ onTouched }: BlankEntryFormProps) {
         </div>
       </div>
 
-      {/* Temporary: submit-attempt toggle so we can show Phase 2.3 submit-time errors before Phase 2.4 exists. */}
-      {process.env.NODE_ENV === "development" ? (
-        <div className="flex items-center gap-3">
-          <Button
-            type="button"
-            variant="secondary"
-            className="min-h-[44px]"
-            onClick={() => setSubmitAttempted(true)}
-          >
-            Validate (dev)
-          </Button>
-          {ticketAvailability.error ? (
-            <p className="text-sm text-muted-foreground">Ticket check: {ticketAvailability.error}</p>
-          ) : null}
+      {submitError ? (
+        <div className="rounded-lg border border-border bg-muted/20 px-3 py-3 text-sm text-muted-foreground">
+          {submitError}
         </div>
       ) : null}
+
+      <Button
+        type="button"
+        size="lg"
+        className="min-h-[44px] w-full"
+        disabled={isSubmitting}
+        onClick={async () => {
+          setSubmitAttempted(true)
+          const nextErrors = validateBlankEntry(
+            state,
+            ticketNumberInt,
+            Boolean(ticketNumberInt && ticketAvailability.inUse)
+          )
+          const hasErrors = Object.keys(nextErrors).length > 0
+          if (hasErrors) {
+            const first = document.querySelector("[aria-invalid='true']")
+            if (first instanceof HTMLElement) {
+              first.scrollIntoView({ block: "center", behavior: "smooth" })
+              first.focus()
+            }
+            return
+          }
+
+          try {
+            await create(state)
+            setState(defaultState())
+            setSubmitAttempted(false)
+          } catch {
+            // error toast/banner handled by hook
+          }
+        }}
+      >
+        Confirm Drop-Off
+      </Button>
     </section>
   )
 }
