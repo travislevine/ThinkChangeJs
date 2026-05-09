@@ -4,6 +4,7 @@ import Link from "next/link"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { DashboardHeader } from "@/components/dashboard/DashboardHeader"
 import { useBreakpoint } from "@/hooks/useBreakpoint"
 import { useOrientation } from "@/hooks/useOrientation"
 import { GRID_COLUMNS_BY_BREAKPOINT } from "@/lib/constants/layout"
@@ -16,28 +17,12 @@ export default function Home() {
   return (
     <div className="min-h-[100dvh] overflow-hidden bg-background text-foreground">
       <div className="mx-auto flex min-h-[100dvh] w-full max-w-3xl flex-col px-4 py-6">
-        <header className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-          <div className="flex flex-col gap-1">
-            <h1 className="text-xl font-semibold">BikePark</h1>
-            <p className="text-sm text-muted-foreground">Dashboard (placeholder)</p>
-            {process.env.NODE_ENV === "development" ? (
-              <p className="text-xs text-muted-foreground">
-                Layout: {breakpoint} · {orientation} · grid cols {gridCols}
-              </p>
-            ) : null}
-          </div>
-
-          <div className="flex w-full flex-col gap-3 md:w-auto md:min-w-[320px]">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Button asChild size="lg" className="min-h-[44px] w-full">
-                <Link href="/park">Park</Link>
-              </Button>
-              <Button asChild size="lg" variant="outline" className="min-h-[44px] w-full">
-                <Link href="/pickup">Pick Up</Link>
-              </Button>
-            </div>
-          </div>
-        </header>
+        <DashboardHeader />
+        {process.env.NODE_ENV === "development" ? (
+          <p className="pt-3 text-xs text-muted-foreground">
+            Layout: {breakpoint} · {orientation} · grid cols {gridCols}
+          </p>
+        ) : null}
 
         <main className="flex-1 overflow-y-auto py-6">
           <div className="flex flex-col gap-6">
