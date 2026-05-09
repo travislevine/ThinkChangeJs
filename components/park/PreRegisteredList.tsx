@@ -15,6 +15,7 @@ import { db } from "@/lib/db/powersync"
 import { COLOURS } from "@/lib/constants/colours"
 import { DEVICE_CATEGORIES } from "@/lib/constants/deviceCategories"
 import type { DropOffBlankEntryFormState } from "@/lib/types/dropOffForm"
+import { EditPatronSheet, useEditPatronSheetController } from "@/components/park/EditPatronSheet"
 
 type DeviceRow = {
   device_type: string | null
@@ -77,6 +78,8 @@ export function PreRegisteredList({ onSelect }: PreRegisteredListProps) {
 
   const { retrySync } = useSyncStatus()
   const { toast } = useToast()
+  const editController = useEditPatronSheetController()
+  const [, editActions] = editController
   const [query, setQuery] = React.useState("")
   const [refreshing, setRefreshing] = React.useState(false)
   const [selectingId, setSelectingId] = React.useState<string | null>(null)
@@ -185,7 +188,7 @@ export function PreRegisteredList({ onSelect }: PreRegisteredListProps) {
                   type="button"
                   variant="outline"
                   className="min-h-[44px]"
-                  onClick={() => toast("Edit patron (Phase 2.6) coming soon")}
+                  onClick={() => editActions.openFor(p.ticketId)}
                 >
                   <PencilIcon className="mr-2 h-4 w-4" />
                   Edit
@@ -213,6 +216,8 @@ export function PreRegisteredList({ onSelect }: PreRegisteredListProps) {
           ))}
         </div>
       )}
+
+      <EditPatronSheet controller={editController} />
     </section>
   )
 }
