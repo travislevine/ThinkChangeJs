@@ -99,6 +99,8 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
   return <EventContext.Provider value={value}>{children}</EventContext.Provider>
 }
 
+EventProvider.displayName = "EventProvider"
+
 export function useEvent(): EventContextValue {
   const ctx = React.useContext(EventContext)
   if (!ctx) {

@@ -65,6 +65,8 @@ export function SyncStatusProvider({ children }: { children: React.ReactNode }) 
   return <SyncStatusContext.Provider value={value}>{children}</SyncStatusContext.Provider>
 }
 
+SyncStatusProvider.displayName = "SyncStatusProvider"
+
 export function useSyncStatus(): SyncStatusContextValue {
   const ctx = React.useContext(SyncStatusContext)
   if (!ctx) {

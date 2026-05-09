@@ -37,3 +37,5 @@ export function ClientProviders({ children }: ClientProvidersProps) {
     </SerwistProvider>
   )
 }
+
+ClientProviders.displayName = "ClientProviders"
