@@ -3,6 +3,7 @@
 import * as React from "react"
 import { useRouter } from "next/navigation"
 
+import { BlankEntryForm } from "@/components/park/BlankEntryForm"
 import { PathwaySelector } from "@/components/park/PathwaySelector"
 import { Button } from "@/components/ui/button"
 import {
@@ -58,11 +59,11 @@ export default function ParkPage() {
 
         <PathwaySelector value={pathway} onChange={onPathwayChange} />
 
-        <div key={formKey} className="rounded-lg border border-border bg-muted/10 p-4 text-sm">
+        <div key={formKey} className="max-h-[calc(100dvh-260px)] overflow-y-auto">
           {pathway === "blank" ? (
-            <div className="text-muted-foreground">Blank Entry form (Phase 2.3) will go here.</div>
+            <BlankEntryForm onTouched={setFormTouched} />
           ) : (
-            <div className="text-muted-foreground">
+            <div className="rounded-lg border border-border bg-muted/10 p-4 text-sm text-muted-foreground">
               Pre-Registered selector (Phase 2.5) will go here.
             </div>
           )}
