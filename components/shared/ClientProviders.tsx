@@ -10,6 +10,7 @@ import { ThemeProvider } from "@/components/shared/ThemeProvider"
 import { UpdatePrompt } from "@/components/shared/UpdatePrompt"
 import { EventProvider } from "@/contexts/EventContext"
 import { SyncStatusProvider } from "@/contexts/SyncStatusContext"
+import { PinAuthProvider } from "@/hooks/usePinAuth"
 
 export interface ClientProvidersProps {
   children: ReactNode
@@ -22,11 +23,13 @@ export function ClientProviders({ children }: ClientProvidersProps) {
         <PowerSyncProvider>
           <EventProvider>
             <SyncStatusProvider>
-              <AuthGuard>
-                <UpdatePrompt />
-                {children}
-                <Toaster richColors position="bottom-center" />
-              </AuthGuard>
+              <PinAuthProvider>
+                <AuthGuard>
+                  <UpdatePrompt />
+                  {children}
+                  <Toaster richColors position="bottom-center" />
+                </AuthGuard>
+              </PinAuthProvider>
             </SyncStatusProvider>
           </EventProvider>
         </PowerSyncProvider>
