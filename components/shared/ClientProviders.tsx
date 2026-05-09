@@ -1,5 +1,6 @@
 "use client"
 
+import * as React from "react"
 import type { ReactNode } from "react"
 import { SerwistProvider } from "@serwist/next/react"
 
@@ -16,6 +17,20 @@ export interface ClientProvidersProps {
   children: ReactNode
 }
 
+function DevServiceWorkerCleanup() {
+  React.useEffect(() => {
+    if (process.env.NODE_ENV !== "development") return
+    if (!("serviceWorker" in navigator)) return
+
+    void (async () => {
+      const regs = await navigator.serviceWorker.getRegistrations()
+      await Promise.all(regs.map((r) => r.unregister()))
+    })()
+  }, [])
+
+  return null
+}
+
 export function ClientProviders({ children }: ClientProvidersProps) {
   return (
     <SerwistProvider swUrl="/sw.js" disable={process.env.NODE_ENV === "development"}>
@@ -25,6 +40,7 @@ export function ClientProviders({ children }: ClientProvidersProps) {
             <SyncStatusProvider>
               <PinAuthProvider>
                 <AuthGuard>
+                  <DevServiceWorkerCleanup />
                   <UpdatePrompt />
                   {children}
                   <Toaster richColors position="bottom-center" />
