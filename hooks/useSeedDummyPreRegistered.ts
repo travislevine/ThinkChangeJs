@@ -25,7 +25,10 @@ export function useSeedDummyPreRegistered(): void {
   const eventId = currentEvent?.id ?? null
 
   React.useEffect(() => {
-    if (process.env.NODE_ENV !== "development") return
+    const allowDummy =
+      process.env.NODE_ENV === "development" ||
+      process.env.NEXT_PUBLIC_ENABLE_DUMMY_DATA === "true"
+    if (!allowDummy) return
     if (!eventId) return
 
     let cancelled = false
