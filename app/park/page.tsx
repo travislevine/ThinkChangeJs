@@ -3,6 +3,7 @@
 import * as React from "react"
 import { useRouter } from "next/navigation"
 
+import { PathwaySelector } from "@/components/park/PathwaySelector"
 import { Button } from "@/components/ui/button"
 import {
   AlertDialog,
@@ -14,11 +15,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import type { DropOffPathway } from "@/lib/types/dropOff"
 
 export default function ParkPage() {
   const router = useRouter()
   const [formTouched, setFormTouched] = React.useState(false)
   const [confirmOpen, setConfirmOpen] = React.useState(false)
+  const [pathway, setPathway] = React.useState<DropOffPathway>("blank")
+  const [formKey, setFormKey] = React.useState(0)
 
   const onBack = React.useCallback(() => {
     if (!formTouched) {
@@ -27,6 +31,12 @@ export default function ParkPage() {
     }
     setConfirmOpen(true)
   }, [formTouched, router])
+
+  const onPathwayChange = React.useCallback((next: DropOffPathway) => {
+    setPathway(next)
+    setFormTouched(false)
+    setFormKey((k) => k + 1)
+  }, [])
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -44,6 +54,18 @@ export default function ParkPage() {
         <div className="space-y-1">
           <h2 className="text-xl font-semibold">Drop-Off</h2>
           <p className="text-sm text-muted-foreground">Placeholder page</p>
+        </div>
+
+        <PathwaySelector value={pathway} onChange={onPathwayChange} />
+
+        <div key={formKey} className="rounded-lg border border-border bg-muted/10 p-4 text-sm">
+          {pathway === "blank" ? (
+            <div className="text-muted-foreground">Blank Entry form (Phase 2.3) will go here.</div>
+          ) : (
+            <div className="text-muted-foreground">
+              Pre-Registered selector (Phase 2.5) will go here.
+            </div>
+          )}
         </div>
 
         {process.env.NODE_ENV === "development" ? (
