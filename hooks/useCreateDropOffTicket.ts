@@ -45,9 +45,10 @@ export function useCreateDropOffTicket(): CreateDropOffTicketResult {
 
       try {
         const now = Math.floor(Date.now() / 1000)
-        const ticketId = crypto.randomUUID()
+        const newTicketId = crypto.randomUUID()
         const deviceId = getOrCreateDeviceUuid()
         const totalDevices = sumDevices(state)
+        let usedTicketId = newTicketId
 
         await db.writeTransaction(async (tx) => {
           const pool = await tx.getOptional<{ id: string; status: string }>(
@@ -64,21 +65,45 @@ export function useCreateDropOffTicket(): CreateDropOffTicketResult {
 
           await tx.execute("UPDATE ticket_numbers SET status = 'in_use' WHERE id = ?", [pool.id])
 
-          await tx.execute(
-            "INSERT INTO tickets (id, event_id, ticket_number, patron_name, mobile, email, total_devices, devices_remaining, status, deleted_at, device_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)",
-            [
-              ticketId,
-              currentEvent.id,
-              ticketNumber,
-              state.patronName.trim() ? state.patronName.trim() : null,
-              state.mobile.trim() ? state.mobile.trim() : null,
-              state.email.trim() ? state.email.trim() : null,
-              totalDevices,
-              totalDevices,
-              "checked_in",
-              deviceId || null,
-            ]
+          const existing = await tx.getOptional<{ id: string }>(
+            "SELECT id FROM tickets WHERE event_id = ? AND ticket_number = ? AND status = 'pre_registered' AND deleted_at IS NULL LIMIT 1",
+            [currentEvent.id, ticketNumber]
           )
+
+          const ticketId = existing?.id ?? newTicketId
+          usedTicketId = ticketId
+
+          if (existing?.id) {
+            await tx.execute(
+              "UPDATE tickets SET patron_name = ?, mobile = ?, email = ?, total_devices = ?, devices_remaining = ?, status = 'checked_in', device_id = ? WHERE id = ?",
+              [
+                state.patronName.trim() ? state.patronName.trim() : null,
+                state.mobile.trim() ? state.mobile.trim() : null,
+                state.email.trim() ? state.email.trim() : null,
+                totalDevices,
+                totalDevices,
+                deviceId || null,
+                ticketId,
+              ]
+            )
+            await tx.execute("DELETE FROM devices WHERE ticket_id = ?", [ticketId])
+          } else {
+            await tx.execute(
+              "INSERT INTO tickets (id, event_id, ticket_number, patron_name, mobile, email, total_devices, devices_remaining, status, deleted_at, device_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)",
+              [
+                ticketId,
+                currentEvent.id,
+                ticketNumber,
+                state.patronName.trim() ? state.patronName.trim() : null,
+                state.mobile.trim() ? state.mobile.trim() : null,
+                state.email.trim() ? state.email.trim() : null,
+                totalDevices,
+                totalDevices,
+                "checked_in",
+                deviceId || null,
+              ]
+            )
+          }
 
           for (const row of state.devices) {
             await tx.execute(
@@ -97,7 +122,7 @@ export function useCreateDropOffTicket(): CreateDropOffTicketResult {
         })
 
         success(`✓ Ticket #${String(ticketNumber).padStart(3, "0")} confirmed`)
-        return { ticketId, ticketNumber }
+        return { ticketId: usedTicketId, ticketNumber }
       } catch (e) {
         const message = e instanceof Error ? e.message : "Failed to save."
         setError(message)
