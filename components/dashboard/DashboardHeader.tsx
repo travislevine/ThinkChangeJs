@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { Settings2Icon } from "lucide-react"
+import { Settings } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { SettingsSheet } from "@/components/dashboard/SettingsSheet"
@@ -42,7 +42,7 @@ export function DashboardHeader() {
                 className="min-h-[44px] min-w-[44px]"
                 aria-label="Open settings"
               >
-                <Settings2Icon className="h-5 w-5" />
+                <Settings className="h-5 w-5" />
               </Button>
             }
           />
