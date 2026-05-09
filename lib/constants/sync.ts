@@ -1,0 +1,4 @@
+export const CONNECTIVITY_PROBE_INTERVAL_MS = 5_000
+export const CONNECTIVITY_PROBE_TIMEOUT_MS = 1_500
+export const CONNECTIVITY_PROBE_URL = "/api/ping"
+
