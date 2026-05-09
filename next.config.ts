@@ -1,10 +1,14 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from "next"
+import withSerwist from "@serwist/next"
+
+const withPWA = withSerwist({
+  swSrc: "app/sw.ts",
+  swDest: "public/sw.js",
+  disable: process.env.NODE_ENV !== "production",
+})
 
 const nextConfig: NextConfig = {
-  /* config options here */
-};
-
-export default nextConfig;
-module.exports = {
-  allowedDevOrigins: ['192.168.1.20'],
+  allowedDevOrigins: ["192.168.1.20"],
 }
+
+export default withPWA(nextConfig)
