@@ -5,6 +5,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader"
+import { StatsSection } from "@/components/dashboard/StatsSection"
 import { useBreakpoint } from "@/hooks/useBreakpoint"
 import { useOrientation } from "@/hooks/useOrientation"
 import { GRID_COLUMNS_BY_BREAKPOINT } from "@/lib/constants/layout"
@@ -26,6 +27,8 @@ export default function Home() {
 
         <main className="flex-1 overflow-y-auto py-6">
           <div className="flex flex-col gap-6">
+            <StatsSection />
+
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
               <Card>
                 <CardHeader>
