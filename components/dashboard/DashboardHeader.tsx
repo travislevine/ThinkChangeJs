@@ -5,8 +5,8 @@ import Link from "next/link"
 import { Settings2Icon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { SettingsSheet } from "@/components/dashboard/SettingsSheet"
 import { SyncStatusIndicator } from "@/components/dashboard/SyncStatusIndicator"
-import { useToast } from "@/hooks/useToast"
 
 function formatToday(): string {
   return new Intl.DateTimeFormat(undefined, { weekday: "long", day: "numeric", month: "long", year: "numeric" })
@@ -14,8 +14,6 @@ function formatToday(): string {
 }
 
 export function DashboardHeader() {
-  const { toast } = useToast()
-
   return (
     <header className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
       <div className="flex flex-col gap-1">
@@ -35,16 +33,19 @@ export function DashboardHeader() {
 
         <div className="flex items-center justify-between gap-3">
           <SyncStatusIndicator />
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="min-h-[44px] min-w-[44px]"
-            onClick={() => toast("Settings coming soon")}
-            aria-label="Open settings"
-          >
-            <Settings2Icon className="h-5 w-5" />
-          </Button>
+          <SettingsSheet
+            trigger={
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="min-h-[44px] min-w-[44px]"
+                aria-label="Open settings"
+              >
+                <Settings2Icon className="h-5 w-5" />
+              </Button>
+            }
+          />
         </div>
       </div>
     </header>
