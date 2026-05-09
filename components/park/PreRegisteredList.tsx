@@ -1,12 +1,22 @@
 "use client"
 
 import * as React from "react"
-import { PencilIcon, RefreshCwIcon } from "lucide-react"
+import { PencilIcon, RefreshCwIcon, Trash2Icon } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { useSyncStatus } from "@/contexts/SyncStatusContext"
 import { useToast } from "@/hooks/useToast"
 import { usePreRegisteredPatrons } from "@/hooks/usePreRegisteredPatrons"
@@ -77,12 +87,13 @@ export function PreRegisteredList({ onSelect }: PreRegisteredListProps) {
   useSeedDummyPreRegistered()
 
   const { retrySync } = useSyncStatus()
-  const { toast } = useToast()
+  const { toast, success } = useToast()
   const editController = useEditPatronSheetController()
   const [, editActions] = editController
   const [query, setQuery] = React.useState("")
   const [refreshing, setRefreshing] = React.useState(false)
   const [selectingId, setSelectingId] = React.useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = React.useState<{ id: string; name: string } | null>(null)
 
   const { patrons, isLoading, error } = usePreRegisteredPatrons(query)
 
@@ -134,6 +145,22 @@ export function PreRegisteredList({ onSelect }: PreRegisteredListProps) {
     },
     [onSelect, selectingId, toast]
   )
+
+  const confirmDelete = React.useCallback(async (): Promise<void> => {
+    if (!deleteTarget) return
+    const target = deleteTarget
+    try {
+      await db.writeTransaction(async (tx) => {
+        const now = Math.floor(Date.now() / 1000)
+        await tx.execute("UPDATE tickets SET deleted_at = ? WHERE id = ?", [now, target.id])
+      })
+      success(`${target.name} removed`)
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Failed to remove patron")
+    } finally {
+      setDeleteTarget(null)
+    }
+  }, [deleteTarget, success, toast])
 
   return (
     <section className="flex flex-col gap-4">
@@ -203,6 +230,16 @@ export function PreRegisteredList({ onSelect }: PreRegisteredListProps) {
                 </Button>
                 <Button
                   type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="min-h-[44px] min-w-[44px] text-destructive hover:text-destructive"
+                  onClick={() => setDeleteTarget({ id: p.ticketId, name: p.patronName })}
+                  aria-label={`Delete ${p.patronName}`}
+                >
+                  <Trash2Icon className="h-5 w-5" />
+                </Button>
+                <Button
+                  type="button"
                   className="min-h-[44px]"
                   disabled={selectingId === p.ticketId}
                   onClick={() =>
@@ -226,6 +263,27 @@ export function PreRegisteredList({ onSelect }: PreRegisteredListProps) {
       )}
 
       <EditPatronSheet controller={editController} />
+
+      <AlertDialog open={Boolean(deleteTarget)} onOpenChange={(open) => (open ? null : setDeleteTarget(null))}>
+        <AlertDialogContent size="sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {deleteTarget ? `Remove ${deleteTarget.name} from pre-registered list?` : "Remove patron?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This patron will be removed from the pre-registered list.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel variant="destructive" className="min-h-[44px]">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction className="min-h-[44px]" onClick={(e) => { e.preventDefault(); void confirmDelete() }}>
+              Confirm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   )
 }
