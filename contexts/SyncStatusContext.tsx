@@ -3,6 +3,7 @@
 import * as React from "react"
 
 import { db } from "@/lib/db/powersync"
+import { createBikeParkConnector } from "@/lib/db/sync"
 import {
   CONNECTIVITY_PROBE_INTERVAL_MS,
   CONNECTIVITY_PROBE_TIMEOUT_MS,
@@ -14,6 +15,8 @@ import type { SyncState } from "@/lib/types/sync"
 export interface SyncStatusContextValue {
   syncState: SyncState
   lastSyncedAt: Date | null
+  hasSyncError: boolean
+  retrySync: () => Promise<void>
 }
 
 const SyncStatusContext = React.createContext<SyncStatusContextValue | null>(null)
@@ -89,13 +92,27 @@ export function SyncStatusProvider({ children }: { children: React.ReactNode }) 
 
   const syncState = React.useMemo<SyncState>(() => toAppSyncState(isOnline, status), [isOnline, status])
   const lastSyncedAt = React.useMemo<Date | null>(() => toLastSyncedAt(status), [status])
+  const hasSyncError = React.useMemo(() => {
+    const flow = status.dataFlowStatus
+    return Boolean(flow?.downloadError || flow?.uploadError)
+  }, [status])
+
+  const retrySync = React.useCallback(async (): Promise<void> => {
+    const connector = createBikeParkConnector()
+    const creds = await connector.fetchCredentials()
+    if (!creds) return
+    if (db.connected || db.connecting) return
+    await db.connect(connector)
+  }, [])
 
   const value = React.useMemo<SyncStatusContextValue>(
     () => ({
       syncState,
       lastSyncedAt,
+      hasSyncError,
+      retrySync,
     }),
-    [syncState, lastSyncedAt]
+    [syncState, lastSyncedAt, hasSyncError, retrySync]
   )
 
   return <SyncStatusContext.Provider value={value}>{children}</SyncStatusContext.Provider>

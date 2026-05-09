@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 
 import { BlankEntryForm } from "@/components/park/BlankEntryForm"
 import { PathwaySelector } from "@/components/park/PathwaySelector"
+import { PreRegisteredList } from "@/components/park/PreRegisteredList"
 import { Button } from "@/components/ui/button"
 import {
   AlertDialog,
@@ -17,6 +18,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import type { DropOffPathway } from "@/lib/types/dropOff"
+import type { DropOffBlankEntryFormState } from "@/lib/types/dropOffForm"
 
 export default function ParkPage() {
   const router = useRouter()
@@ -24,6 +26,7 @@ export default function ParkPage() {
   const [confirmOpen, setConfirmOpen] = React.useState(false)
   const [pathway, setPathway] = React.useState<DropOffPathway>("blank")
   const [formKey, setFormKey] = React.useState(0)
+  const [blankInitialState, setBlankInitialState] = React.useState<DropOffBlankEntryFormState | undefined>(undefined)
 
   const onBack = React.useCallback(() => {
     if (!formTouched) {
@@ -36,6 +39,7 @@ export default function ParkPage() {
   const onPathwayChange = React.useCallback((next: DropOffPathway) => {
     setPathway(next)
     setFormTouched(false)
+    setBlankInitialState(undefined)
     setFormKey((k) => k + 1)
   }, [])
 
@@ -61,11 +65,16 @@ export default function ParkPage() {
 
         <div key={formKey} className="max-h-[calc(100dvh-260px)] overflow-y-auto">
           {pathway === "blank" ? (
-            <BlankEntryForm onTouched={setFormTouched} />
+            <BlankEntryForm onTouched={setFormTouched} initialState={blankInitialState} />
           ) : (
-            <div className="rounded-lg border border-border bg-muted/10 p-4 text-sm text-muted-foreground">
-              Pre-Registered selector (Phase 2.5) will go here.
-            </div>
+            <PreRegisteredList
+              onSelect={(prefill) => {
+                setBlankInitialState(prefill)
+                setPathway("blank")
+                setFormTouched(false)
+                setFormKey((k) => k + 1)
+              }}
+            />
           )}
         </div>
 

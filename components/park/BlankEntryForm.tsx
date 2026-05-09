@@ -24,6 +24,7 @@ import { useTicketNumberAvailability } from "@/hooks/useTicketNumberAvailability
 
 export interface BlankEntryFormProps {
   onTouched: (touched: boolean) => void
+  initialState?: DropOffBlankEntryFormState
 }
 
 const DEVICE_COUNT_PRESETS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "10+"] as const
@@ -131,8 +132,8 @@ function validateBlankEntry(
   return errors
 }
 
-export function BlankEntryForm({ onTouched }: BlankEntryFormProps) {
-  const [state, setState] = React.useState<DropOffBlankEntryFormState>(() => defaultState())
+export function BlankEntryForm({ onTouched, initialState }: BlankEntryFormProps) {
+  const [state, setState] = React.useState<DropOffBlankEntryFormState>(() => initialState ?? defaultState())
   const { create, isSubmitting, error: submitError } = useCreateDropOffTicket()
 
   const ticketNumberInt = React.useMemo(() => parseTicketNumber(state.ticketNumber), [state.ticketNumber])
