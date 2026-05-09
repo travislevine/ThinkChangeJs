@@ -17,26 +17,22 @@ export function AuthGuard({ children }: AuthGuardProps) {
   React.useEffect(() => {
     if (!ready) return
     if (!isAuthorised && pathname !== "/pin") {
-      router.replace("/pin")
-    }
-    if (isAuthorised && pathname === "/pin") {
-      router.replace("/")
+      const next = encodeURIComponent(pathname || "/")
+      router.replace(`/pin?next=${next}`)
     }
   }, [ready, isAuthorised, pathname, router])
 
-  if (!ready && pathname !== "/pin") {
-    return null
-  }
-
-  if (!ready && pathname === "/pin") {
+  // Never guard the PIN page; otherwise you can end up with a blank screen
+  // during redirects/hydration.
+  if (pathname === "/pin") {
     return <>{children}</>
   }
 
-  if (!isAuthorised && pathname !== "/pin") {
+  if (!ready) {
     return null
   }
 
-  if (isAuthorised && pathname === "/pin") {
+  if (!isAuthorised) {
     return null
   }
 

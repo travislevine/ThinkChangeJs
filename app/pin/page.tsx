@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -12,10 +12,21 @@ const PIN_PATTERN = /^\d{4,6}$/
 
 export default function PinPage() {
   const router = useRouter()
-  const { ready, unlock } = usePinAuth()
+  const searchParams = useSearchParams()
+  const nextParam = searchParams.get("next")
+  const nextRoute = nextParam && nextParam.startsWith("/") ? nextParam : "/"
+
+  const { ready, unlock, isAuthorised } = usePinAuth()
   const [pin, setPin] = React.useState("")
   const [error, setError] = React.useState<string | null>(null)
   const [submitting, setSubmitting] = React.useState(false)
+
+  React.useEffect(() => {
+    if (!ready) return
+    if (isAuthorised) {
+      router.replace(nextRoute)
+    }
+  }, [isAuthorised, nextRoute, ready, router])
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -33,7 +44,7 @@ export default function PinPage() {
         setError("Incorrect PIN")
         return
       }
-      router.replace("/")
+      router.replace(nextRoute)
     } finally {
       setSubmitting(false)
     }
