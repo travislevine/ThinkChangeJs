@@ -24,7 +24,7 @@ export function DashboardHeader() {
       <div className="flex w-full flex-col gap-3 md:w-auto md:min-w-[420px]">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Button asChild size="lg" className="min-h-[44px] w-full">
-            <Link href="/park">Park</Link>
+            <Link href="/park">Drop-Off</Link>
           </Button>
           <Button asChild size="lg" variant="outline" className="min-h-[44px] w-full">
             <Link href="/pickup">Pick Up</Link>

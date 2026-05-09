@@ -42,7 +42,7 @@ export default function ParkPage() {
         </Button>
 
         <div className="space-y-1">
-          <h2 className="text-xl font-semibold">Park</h2>
+          <h2 className="text-xl font-semibold">Drop-Off</h2>
           <p className="text-sm text-muted-foreground">Placeholder page</p>
         </div>
 
