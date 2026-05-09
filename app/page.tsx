@@ -25,7 +25,7 @@ export default function Home() {
     <div className="min-h-screen bg-background text-foreground" suppressHydrationWarning>
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 py-6">
         <header className="flex items-center justify-between gap-3">
-          <h1 className="text-lg font-semibold">BikePark UI smoke test</h1>
+          <h1 className="text-lg font-semibold">BikePark UI smoke test v2</h1>
           <div className="flex items-center gap-2">
             <ThemeToggle />
             <Badge variant="secondary">Phase 0.3</Badge>
