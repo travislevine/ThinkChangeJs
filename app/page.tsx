@@ -1,118 +1,47 @@
 "use client"
 
-import * as React from "react"
+import Link from "next/link"
 
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Separator } from "@/components/ui/separator"
-import { Switch } from "@/components/ui/switch"
-import { Textarea } from "@/components/ui/textarea"
-import { ThemeToggle } from "@/components/shared/ThemeToggle"
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-background text-foreground" suppressHydrationWarning>
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 py-6">
-        <header className="flex items-center justify-between gap-3">
-          <h1 className="text-lg font-semibold">BikePark UI smoke test v2</h1>
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-            <Badge variant="secondary">Phase 0.3</Badge>
-          </div>
+    <div className="min-h-screen bg-background text-foreground">
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-6">
+        <header className="flex flex-col gap-1">
+          <h1 className="text-xl font-semibold">BikePark</h1>
+          <p className="text-sm text-muted-foreground">Dashboard (placeholder)</p>
         </header>
 
-        <Separator />
-
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2">
           <Card>
             <CardHeader>
-              <CardTitle>Light</CardTitle>
+              <CardTitle>Primary actions</CardTitle>
             </CardHeader>
-            <CardContent>
-              <UiSample />
+            <CardContent className="flex flex-col gap-3">
+              <Button asChild size="lg" className="min-h-[44px]">
+                <Link href="/park">Park</Link>
+              </Button>
+              <Button asChild size="lg" variant="outline" className="min-h-[44px]">
+                <Link href="/pickup">Pick Up</Link>
+              </Button>
+              <Button asChild size="lg" variant="secondary" className="min-h-[44px]">
+                <Link href="/check-ticket">Check Ticket</Link>
+              </Button>
             </CardContent>
           </Card>
 
-          <Card className="dark">
+          <Card>
             <CardHeader>
-              <CardTitle>Dark</CardTitle>
+              <CardTitle>Access</CardTitle>
             </CardHeader>
-            <CardContent>
-              <UiSample />
+            <CardContent className="flex flex-col gap-3">
+              <Button asChild size="lg" variant="ghost" className="min-h-[44px] justify-start">
+                <Link href="/pin">PIN entry</Link>
+              </Button>
             </CardContent>
           </Card>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function UiSample() {
-  const [isVerified, setIsVerified] = React.useState<boolean>(false)
-  const [isToggled, setIsToggled] = React.useState<boolean>(false)
-  const [deviceType, setDeviceType] = React.useState<string>("")
-
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <Button>Primary</Button>
-        <Button variant="outline">Outline</Button>
-        <Button variant="secondary">Secondary</Button>
-        <Button variant="destructive">Destructive</Button>
-        <Badge>Badge</Badge>
-      </div>
-
-      <div className="grid gap-2">
-        <Label htmlFor="ticket">Ticket number</Label>
-        <Input id="ticket" inputMode="numeric" placeholder="047" />
-      </div>
-
-      <div className="grid gap-2">
-        <Label>Device type</Label>
-        <Select value={deviceType} onValueChange={setDeviceType}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select a device type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="bike">Bike</SelectItem>
-            <SelectItem value="ebike">eBike</SelectItem>
-            <SelectItem value="scooter">Scooter</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className="grid gap-2">
-        <Label htmlFor="notes">Notes</Label>
-        <Textarea id="notes" placeholder="Optional…" />
-      </div>
-
-      <div className="flex flex-wrap items-center gap-6">
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id="verified"
-            checked={isVerified}
-            onCheckedChange={(value) => setIsVerified(value === true)}
-          />
-          <Label htmlFor="verified">Verified</Label>
-        </div>
-        <div className="flex items-center gap-2">
-          <Switch
-            id="toggle"
-            checked={isToggled}
-            onCheckedChange={(value) => setIsToggled(value === true)}
-          />
-          <Label htmlFor="toggle">Toggle</Label>
         </div>
       </div>
     </div>
