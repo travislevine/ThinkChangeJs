@@ -29,10 +29,12 @@ export default function CheckTicketPage() {
     CHECK_TICKET_SORT_MODE.NEWEST_FIRST
   )
 
-  const { tickets, isLoading: ticketsLoading, error: ticketsError } = useCheckTicketTickets(
-    searchQuery,
-    sortMode
-  )
+  const {
+    tickets,
+    eventTicketCount,
+    isLoading: ticketsLoading,
+    error: ticketsError,
+  } = useCheckTicketTickets(searchQuery, sortMode)
   const {
     linesByTicketId,
     isLoading: devicesLoading,
@@ -133,6 +135,7 @@ export default function CheckTicketPage() {
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto pb-2">
           <CheckTicketRecordList
             tickets={tickets}
+            eventTicketCount={eventTicketCount}
             deviceLinesByTicketId={linesByTicketId}
             notesByTicketId={notesByTicketId}
             pickupsByTicketId={pickupsByTicketId}

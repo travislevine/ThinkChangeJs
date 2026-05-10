@@ -102,7 +102,7 @@ export function PickupTicketSearchSections({
         <section className="flex flex-col gap-3" aria-label="Active tickets">
           {activeTickets.length === 0 ? (
             <div className="rounded-lg border border-border bg-muted/20 px-4 py-10 text-center text-sm text-muted-foreground">
-              No active devices currently parked.
+              No devices currently parked.
             </div>
           ) : (
             <PickupActiveTicketsGrid

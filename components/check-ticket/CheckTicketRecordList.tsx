@@ -7,6 +7,8 @@ import type { PickupTicketDeviceLine } from "@/lib/types/pickup"
 
 export interface CheckTicketRecordListProps {
   tickets: CheckTicketTicketRow[]
+  /** Count of tickets for the event before search filter. */
+  eventTicketCount: number
   deviceLinesByTicketId: Record<string, PickupTicketDeviceLine[]>
   notesByTicketId: Record<string, CheckTicketNoteEntry[]>
   pickupsByTicketId: Record<string, CheckTicketPickupEntry[]>
@@ -20,6 +22,7 @@ export interface CheckTicketRecordListProps {
 
 export function CheckTicketRecordList({
   tickets,
+  eventTicketCount,
   deviceLinesByTicketId,
   notesByTicketId,
   pickupsByTicketId,
@@ -48,9 +51,13 @@ export function CheckTicketRecordList({
   }
 
   if (tickets.length === 0) {
+    const emptyMessage =
+      eventTicketCount === 0
+        ? "No ticket records for this event."
+        : "No tickets match your search."
     return (
       <div className="rounded-lg border border-border bg-muted/20 px-4 py-10 text-center text-sm text-muted-foreground">
-        No tickets match your search.
+        {emptyMessage}
       </div>
     )
   }

@@ -10,6 +10,8 @@ import type { CheckTicketTicketRow } from "@/lib/types/checkTicket"
 
 export interface UseCheckTicketTicketsResult {
   tickets: CheckTicketTicketRow[]
+  /** Non-deleted tickets for the event before search filter (for empty-state copy). */
+  eventTicketCount: number
   isLoading: boolean
   error: string | null
 }
@@ -139,8 +141,10 @@ export function useCheckTicketTickets(
   }, [q, sortMode, state.rows])
 
   const stale = state.key !== key
+  const eventTicketCount = stale ? 0 : state.rows.length
   return {
     tickets,
+    eventTicketCount,
     isLoading: Boolean(eventId) && stale,
     error: stale ? null : state.error,
   }
