@@ -2,16 +2,21 @@
 
 import * as React from "react"
 
+import { PickupActiveTicketsGrid } from "@/components/pickup/PickupActiveTicketsGrid"
+import { PickupTicketPickupDialog } from "@/components/pickup/PickupTicketPickupDialog"
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
-import type { PickupTicketSummary } from "@/lib/types/pickup"
+import type { PickupTicketDeviceLine, PickupTicketSummary } from "@/lib/types/pickup"
 
 export interface PickupTicketSearchSectionsProps {
   activeTickets: PickupTicketSummary[]
   completedTickets: PickupTicketSummary[]
   showCompleted: boolean
   isLoading: boolean
+  deviceLinesByTicketId: Record<string, PickupTicketDeviceLine[]>
+  isDevicesLoading: boolean
   error: string | null
+  devicesError: string | null
 }
 
 function TicketLine({ t }: { t: PickupTicketSummary }) {
@@ -29,9 +34,30 @@ export function PickupTicketSearchSections({
   completedTickets,
   showCompleted,
   isLoading,
+  deviceLinesByTicketId,
+  isDevicesLoading,
   error,
+  devicesError,
 }: PickupTicketSearchSectionsProps) {
-  if (error) {
+  const [pickupTicket, setPickupTicket] = React.useState<PickupTicketSummary | null>(null)
+  const [dialogOpen, setDialogOpen] = React.useState(false)
+
+  const loadError = error ?? devicesError
+  const gridLoading = isLoading || isDevicesLoading
+
+  const onActiveTicketSelect = React.useCallback((t: PickupTicketSummary) => {
+    setPickupTicket(t)
+    setDialogOpen(true)
+  }, [])
+
+  const onDialogOpenChange = React.useCallback((open: boolean) => {
+    setDialogOpen(open)
+    if (!open) {
+      setPickupTicket(null)
+    }
+  }, [])
+
+  if (loadError) {
     return (
       <div className="rounded-lg border border-border bg-muted/20 px-3 py-3 text-sm text-muted-foreground">
         Failed to load tickets for pick-up.
@@ -39,11 +65,11 @@ export function PickupTicketSearchSections({
     )
   }
 
-  if (isLoading) {
+  if (gridLoading) {
     return (
-      <div className="flex flex-col gap-3">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <Skeleton key={i} className="h-16 w-full" />
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-2">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-44 w-full rounded-xl" />
         ))}
       </div>
     )
@@ -70,24 +96,26 @@ export function PickupTicketSearchSections({
   ) : null
 
   return (
-    <div className="flex flex-col gap-6">
-      <section className="flex flex-col gap-3" aria-label="Active tickets">
-        {activeTickets.length === 0 ? (
-          <div className="rounded-lg border border-border bg-muted/20 px-4 py-10 text-center text-sm text-muted-foreground">
-            No active devices currently parked.
-          </div>
-        ) : (
-          <ul className="flex flex-col gap-2">
-            {activeTickets.map((t) => (
-              <li key={t.ticketId}>
-                <TicketLine t={t} />
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+    <>
+      <div className="flex flex-col gap-6">
+        <section className="flex flex-col gap-3" aria-label="Active tickets">
+          {activeTickets.length === 0 ? (
+            <div className="rounded-lg border border-border bg-muted/20 px-4 py-10 text-center text-sm text-muted-foreground">
+              No active devices currently parked.
+            </div>
+          ) : (
+            <PickupActiveTicketsGrid
+              tickets={activeTickets}
+              deviceLinesByTicketId={deviceLinesByTicketId}
+              onTicketSelect={onActiveTicketSelect}
+            />
+          )}
+        </section>
 
-      {completedBlock}
-    </div>
+        {completedBlock}
+      </div>
+
+      <PickupTicketPickupDialog ticket={pickupTicket} open={dialogOpen} onOpenChange={onDialogOpenChange} />
+    </>
   )
 }

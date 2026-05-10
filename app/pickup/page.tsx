@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { PickupSearchFilterBar } from "@/components/pickup/PickupSearchFilterBar"
 import { PickupTicketSearchSections } from "@/components/pickup/PickupTicketSearchSections"
 import { Button } from "@/components/ui/button"
+import { usePickupTicketDeviceLines } from "@/hooks/usePickupTicketDeviceLines"
 import { usePickupTickets } from "@/hooks/usePickupTickets"
 
 export default function PickupPage() {
@@ -14,6 +15,11 @@ export default function PickupPage() {
   const [showCompleted, setShowCompleted] = React.useState(false)
 
   const { activeTickets, completedTickets, isLoading, error } = usePickupTickets(searchQuery)
+  const {
+    linesByTicketId,
+    isLoading: isDevicesLoading,
+    error: devicesError,
+  } = usePickupTicketDeviceLines()
 
   const onBack = React.useCallback(() => {
     router.push("/")
@@ -46,7 +52,10 @@ export default function PickupPage() {
           completedTickets={completedTickets}
           showCompleted={showCompleted}
           isLoading={isLoading}
+          deviceLinesByTicketId={linesByTicketId}
+          isDevicesLoading={isDevicesLoading}
           error={error}
+          devicesError={devicesError}
         />
       </div>
     </div>

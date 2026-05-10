@@ -6,3 +6,8 @@ export interface PickupTicketSummary {
   devicesRemaining: number
   status: string
 }
+
+export interface PickupTicketDeviceLine {
+  deviceType: string
+  quantity: number
+}
