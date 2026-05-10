@@ -3,6 +3,7 @@
 import * as React from "react"
 
 import { PickupActiveTicketsGrid } from "@/components/pickup/PickupActiveTicketsGrid"
+import { PickupCheckoutFlash } from "@/components/pickup/PickupCheckoutFlash"
 import { PickupTicketPickupDialog } from "@/components/pickup/PickupTicketPickupDialog"
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -41,12 +42,16 @@ export function PickupTicketSearchSections({
 }: PickupTicketSearchSectionsProps) {
   const [pickupTicket, setPickupTicket] = React.useState<PickupTicketSummary | null>(null)
   const [dialogOpen, setDialogOpen] = React.useState(false)
+  const [flashTicketNumber, setFlashTicketNumber] = React.useState<number | null>(null)
+  const [dialogSession, setDialogSession] = React.useState(0)
 
-  const loadError = error ?? devicesError
-  const gridLoading = isLoading || isDevicesLoading
+  const onFlashDismissed = React.useCallback(() => {
+    setFlashTicketNumber(null)
+  }, [])
 
   const onActiveTicketSelect = React.useCallback((t: PickupTicketSummary) => {
     setPickupTicket(t)
+    setDialogSession((s) => s + 1)
     setDialogOpen(true)
   }, [])
 
@@ -56,6 +61,9 @@ export function PickupTicketSearchSections({
       setPickupTicket(null)
     }
   }, [])
+
+  const loadError = error ?? devicesError
+  const gridLoading = isLoading || isDevicesLoading
 
   if (loadError) {
     return (
@@ -97,6 +105,8 @@ export function PickupTicketSearchSections({
 
   return (
     <>
+      <PickupCheckoutFlash ticketNumber={flashTicketNumber} onDismissed={onFlashDismissed} />
+
       <div className="flex flex-col gap-6">
         <section className="flex flex-col gap-3" aria-label="Active tickets">
           {activeTickets.length === 0 ? (
@@ -115,7 +125,15 @@ export function PickupTicketSearchSections({
         {completedBlock}
       </div>
 
-      <PickupTicketPickupDialog ticket={pickupTicket} open={dialogOpen} onOpenChange={onDialogOpenChange} />
+      <PickupTicketPickupDialog
+        key={dialogSession}
+        ticket={pickupTicket}
+        open={dialogOpen}
+        onOpenChange={onDialogOpenChange}
+        onFullyCheckedOut={(n) => {
+          setFlashTicketNumber(n)
+        }}
+      />
     </>
   )
 }
