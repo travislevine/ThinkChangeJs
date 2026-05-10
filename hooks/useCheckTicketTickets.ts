@@ -69,7 +69,13 @@ function matchesSearch(t: CheckTicketTicketRow, q: string): boolean {
   const ticketStr = String(t.ticketNumber)
   const name = t.patronName.toLowerCase()
   const mobile = (t.mobile ?? "").toLowerCase()
-  return ticketStr.includes(needle) || name.includes(needle) || mobile.includes(needle)
+  const email = (t.email ?? "").toLowerCase()
+  return (
+    ticketStr.includes(needle) ||
+    name.includes(needle) ||
+    mobile.includes(needle) ||
+    email.includes(needle)
+  )
 }
 
 function sortTickets(rows: CheckTicketTicketRow[], mode: CheckTicketSortMode): CheckTicketTicketRow[] {

@@ -11,6 +11,10 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
+import {
+  badgeVariantForTicketStatus,
+  labelForTicketRecordStatus,
+} from "@/lib/constants/ticketStatus"
 import { formatCheckTicketTimestamp } from "@/lib/utils/checkTicketFormat"
 import { formatPickupDeviceBreakdown } from "@/lib/utils/formatPickupDeviceBreakdown"
 import { formatTicketNumberLabel } from "@/lib/utils/ticketDisplay"
@@ -57,12 +61,17 @@ export function CheckTicketRecordCard({
   return (
     <Card size="sm" className="overflow-hidden">
       <CardHeader className="gap-3">
-        <Badge
-          variant="default"
-          className="h-auto w-fit rounded-md px-3 py-1.5 text-base font-semibold"
-        >
-          {formatTicketNumberLabel(ticket.ticketNumber)}
-        </Badge>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge
+            variant="default"
+            className="h-auto w-fit rounded-md px-3 py-1.5 text-base font-semibold"
+          >
+            {formatTicketNumberLabel(ticket.ticketNumber)}
+          </Badge>
+          <Badge variant={badgeVariantForTicketStatus(ticket.status)} className="text-xs font-medium">
+            {labelForTicketRecordStatus(ticket.status)}
+          </Badge>
+        </div>
         <div className="space-y-1">
           <div className="font-semibold text-foreground">{ticket.patronName}</div>
           <div className="text-sm text-muted-foreground">
