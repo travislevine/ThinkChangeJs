@@ -15,7 +15,6 @@ export interface UseCheckTicketTicketsResult {
 }
 
 interface TicketWatchRow {
-  rowid: number | string | null
   id: string
   ticket_number: number | string | null
   patron_name: string | null
@@ -33,8 +32,7 @@ interface CheckTicketTicketsState {
 }
 
 const CHECK_TICKET_SQL = `
-  SELECT rowid,
-         id,
+  SELECT id,
          ticket_number,
          patron_name,
          mobile,
@@ -55,7 +53,6 @@ function asInt(v: unknown): number {
 function rowToRow(r: TicketWatchRow): CheckTicketTicketRow {
   return {
     ticketId: r.id,
-    rowid: asInt(r.rowid),
     ticketNumber: asInt(r.ticket_number),
     patronName: String(r.patron_name ?? "").trim() || "Anonymous",
     mobile: r.mobile ? String(r.mobile).trim() : null,
@@ -78,11 +75,14 @@ function matchesSearch(t: CheckTicketTicketRow, q: string): boolean {
 function sortTickets(rows: CheckTicketTicketRow[], mode: CheckTicketSortMode): CheckTicketTicketRow[] {
   const copy = [...rows]
   if (mode === CHECK_TICKET_SORT_MODE.NEWEST_FIRST) {
-    copy.sort((a, b) => b.rowid - a.rowid)
+    copy.sort((a, b) => {
+      if (b.ticketNumber !== a.ticketNumber) return b.ticketNumber - a.ticketNumber
+      return b.ticketId.localeCompare(a.ticketId)
+    })
   } else {
     copy.sort((a, b) => {
       if (a.ticketNumber !== b.ticketNumber) return a.ticketNumber - b.ticketNumber
-      return b.rowid - a.rowid
+      return b.ticketId.localeCompare(a.ticketId)
     })
   }
   return copy
