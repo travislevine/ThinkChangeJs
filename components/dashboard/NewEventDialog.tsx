@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { INLINE_POWER_SYNC_SAVE_FAILED } from "@/lib/constants/inlineErrors"
 import { useEvent } from "@/contexts/EventContext"
 import { useToast } from "@/hooks/useToast"
 
@@ -45,10 +46,11 @@ function parseDateTimeLocalValue(value: string): number | null {
 }
 
 export function NewEventDialog({ open, onOpenChange }: NewEventDialogProps) {
-  const { success, error } = useToast()
+  const { success } = useToast()
   const { startNewEvent } = useEvent()
 
   const [submitting, setSubmitting] = React.useState(false)
+  const [startEventError, setStartEventError] = React.useState<string | null>(null)
   const [name, setName] = React.useState("")
   const [startedAt, setStartedAt] = React.useState<Date>(() => new Date())
   const [endedAt, setEndedAt] = React.useState("")
@@ -63,6 +65,7 @@ export function NewEventDialog({ open, onOpenChange }: NewEventDialogProps) {
           setName(formatDefaultEventName(now))
           setEndedAt("")
           setSubmitting(false)
+          setStartEventError(null)
         }
         onOpenChange(nextOpen)
       }}
@@ -110,6 +113,12 @@ export function NewEventDialog({ open, onOpenChange }: NewEventDialogProps) {
           </div>
         </div>
 
+        {startEventError ? (
+          <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            {startEventError}
+          </div>
+        ) : null}
+
         <AlertDialogFooter className="gap-2">
           <AlertDialogCancel variant="destructive" className="min-h-[44px]" disabled={submitting}>
             Cancel
@@ -127,6 +136,7 @@ export function NewEventDialog({ open, onOpenChange }: NewEventDialogProps) {
 
               try {
                 setSubmitting(true)
+                setStartEventError(null)
                 await startNewEvent({
                   name: trimmed,
                   startedAt: Math.floor(startedAt.getTime() / 1000),
@@ -134,8 +144,8 @@ export function NewEventDialog({ open, onOpenChange }: NewEventDialogProps) {
                 })
                 success("✓ New event started")
                 onOpenChange(false)
-              } catch (err) {
-                error(err instanceof Error ? err.message : "Failed to start new event")
+              } catch {
+                setStartEventError(INLINE_POWER_SYNC_SAVE_FAILED)
               } finally {
                 setSubmitting(false)
               }

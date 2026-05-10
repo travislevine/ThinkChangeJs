@@ -2,6 +2,7 @@
 
 import * as React from "react"
 
+import { inlineMessageForDropOffWrite } from "@/lib/constants/inlineErrors"
 import { useEvent } from "@/contexts/EventContext"
 import { useToast } from "@/hooks/useToast"
 import { db } from "@/lib/db/powersync"
@@ -124,8 +125,7 @@ export function useCreateDropOffTicket(): CreateDropOffTicketResult {
         success(`✓ Ticket #${String(ticketNumber).padStart(3, "0")} confirmed`)
         return { ticketId: usedTicketId, ticketNumber }
       } catch (e) {
-        const message = e instanceof Error ? e.message : "Failed to save."
-        setError(message)
+        setError(inlineMessageForDropOffWrite(e))
         throw e
       } finally {
         setIsSubmitting(false)

@@ -16,6 +16,8 @@ export interface SyncStatusContextValue {
   syncState: SyncState
   lastSyncedAt: Date | null
   hasSyncError: boolean
+  /** Stable-ish key for the current download/upload error; empty when none (Phase 5.4 dismiss logic). */
+  syncIssueFingerprint: string
   retrySync: () => Promise<void>
 }
 
@@ -92,10 +94,19 @@ export function SyncStatusProvider({ children }: { children: React.ReactNode }) 
 
   const syncState = React.useMemo<SyncState>(() => toAppSyncState(isOnline, status), [isOnline, status])
   const lastSyncedAt = React.useMemo<Date | null>(() => toLastSyncedAt(status), [status])
-  const hasSyncError = React.useMemo(() => {
+  const syncIssueFingerprint = React.useMemo(() => {
     const flow = status.dataFlowStatus
-    return Boolean(flow?.downloadError || flow?.uploadError)
+    const parts: string[] = []
+    if (flow?.downloadError != null) {
+      parts.push(`download:${String(flow.downloadError)}`)
+    }
+    if (flow?.uploadError != null) {
+      parts.push(`upload:${String(flow.uploadError)}`)
+    }
+    return parts.join("|")
   }, [status])
+
+  const hasSyncError = syncIssueFingerprint.length > 0
 
   const retrySync = React.useCallback(async (): Promise<void> => {
     const connector = createBikeParkConnector()
@@ -110,9 +121,10 @@ export function SyncStatusProvider({ children }: { children: React.ReactNode }) 
       syncState,
       lastSyncedAt,
       hasSyncError,
+      syncIssueFingerprint,
       retrySync,
     }),
-    [syncState, lastSyncedAt, hasSyncError, retrySync]
+    [syncState, lastSyncedAt, hasSyncError, syncIssueFingerprint, retrySync]
   )
 
   return <SyncStatusContext.Provider value={value}>{children}</SyncStatusContext.Provider>

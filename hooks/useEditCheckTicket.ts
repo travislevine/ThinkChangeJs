@@ -8,6 +8,7 @@ import { db } from "@/lib/db/powersync"
 import { loadCheckTicketEditState } from "@/lib/db/loadCheckTicketEditState"
 import type { CheckTicketEditFormState } from "@/lib/types/checkTicketEdit"
 import { computeDevicesRemainingAfterTotalChange } from "@/lib/utils/checkTicketDevicesRemaining"
+import { INLINE_POWER_SYNC_SAVE_FAILED } from "@/lib/constants/inlineErrors"
 import { validateCheckTicketEditForm } from "@/lib/utils/checkTicketEditValidation"
 
 export interface EditCheckTicketState {
@@ -126,10 +127,8 @@ export function useEditCheckTicket(): [EditCheckTicketState, EditCheckTicketActi
 
       success("✓ Ticket updated")
       setOpen(false)
-    } catch (e) {
-      const message = e instanceof Error ? e.message : "Failed to save ticket."
-      setErr(message)
-      toastError(message)
+    } catch {
+      setErr(INLINE_POWER_SYNC_SAVE_FAILED)
     } finally {
       setIsSaving(false)
     }

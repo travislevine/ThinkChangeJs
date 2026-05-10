@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/useToast"
 import { db } from "@/lib/db/powersync"
 import { COLOURS } from "@/lib/constants/colours"
 import { DEVICE_CATEGORIES } from "@/lib/constants/deviceCategories"
+import { INLINE_POWER_SYNC_SAVE_FAILED } from "@/lib/constants/inlineErrors"
 import { TICKET_NUMBER_POOL_MAX, TICKET_NUMBER_POOL_MIN } from "@/lib/constants/ticketPool"
 import type { DropOffBlankEntryFormState, DropOffDeviceRow } from "@/lib/types/dropOffForm"
 
@@ -223,9 +224,13 @@ export function useEditPreRegisteredPatron(): [EditPreRegisteredState, EditPreRe
       success("✓ Patron updated")
       setOpen(false)
     } catch (e) {
-      const message = e instanceof Error ? e.message : "Failed to save patron."
-      setErr(message)
-      toastError(message)
+      const message = e instanceof Error ? e.message : ""
+      if (message.includes("already used by another record")) {
+        setErr(message)
+        toastError(message)
+      } else {
+        setErr(INLINE_POWER_SYNC_SAVE_FAILED)
+      }
     } finally {
       setIsSaving(false)
     }
@@ -243,14 +248,12 @@ export function useEditPreRegisteredPatron(): [EditPreRegisteredState, EditPreRe
       })
       success(`${name} removed`)
       setOpen(false)
-    } catch (e) {
-      const message = e instanceof Error ? e.message : "Failed to delete patron."
-      setErr(message)
-      toastError(message)
+    } catch {
+      setErr(INLINE_POWER_SYNC_SAVE_FAILED)
     } finally {
       setIsSaving(false)
     }
-  }, [eventId, form, success, ticketId, toastError])
+  }, [eventId, form, success, ticketId])
 
   const isLoading = Boolean(open && ticketId && eventId && !form && !err)
 

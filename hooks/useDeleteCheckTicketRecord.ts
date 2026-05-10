@@ -2,6 +2,7 @@
 
 import * as React from "react"
 
+import { INLINE_POWER_SYNC_SAVE_FAILED } from "@/lib/constants/inlineErrors"
 import { useEvent } from "@/contexts/EventContext"
 import { useToast } from "@/hooks/useToast"
 import { db } from "@/lib/db/powersync"
@@ -32,7 +33,7 @@ export function useDeleteCheckTicketRecord(): [
 ] {
   const { currentEvent } = useEvent()
   const eventId = currentEvent?.id ?? null
-  const { success, error: toastError } = useToast()
+  const { success } = useToast()
 
   const [open, setOpen] = React.useState(false)
   const [target, setTarget] = React.useState<DeleteCheckTicketTarget | null>(null)
@@ -90,14 +91,12 @@ export function useDeleteCheckTicketRecord(): [
 
       success(`Ticket ${formatTicketNumberLabel(target.ticketNumber)} deleted`)
       close()
-    } catch (e) {
-      const message = e instanceof Error ? e.message : "Failed to delete ticket."
-      setErr(message)
-      toastError(message)
+    } catch {
+      setErr(INLINE_POWER_SYNC_SAVE_FAILED)
     } finally {
       setIsDeleting(false)
     }
-  }, [close, eventId, success, target, toastError])
+  }, [close, eventId, success, target])
 
   const actions = React.useMemo(
     () => ({ openFor, close, onOpenChange, confirm }),

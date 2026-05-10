@@ -343,7 +343,7 @@ export function BlankEntryForm({ onTouched, initialState }: BlankEntryFormProps)
       </div>
 
       {submitError ? (
-        <div className="rounded-lg border border-border bg-muted/20 px-3 py-3 text-sm text-muted-foreground">
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-3 text-sm text-destructive">
           {submitError}
         </div>
       ) : null}

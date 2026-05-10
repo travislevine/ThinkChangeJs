@@ -2,6 +2,7 @@
 
 import * as React from "react"
 
+import { INLINE_POWER_SYNC_SAVE_FAILED } from "@/lib/constants/inlineErrors"
 import { useEvent } from "@/contexts/EventContext"
 import { useToast } from "@/hooks/useToast"
 import { db } from "@/lib/db/powersync"
@@ -87,10 +88,8 @@ export function useAddCheckTicketNote(): [AddCheckTicketNoteState, AddCheckTicke
 
       success("✓ Note saved")
       close()
-    } catch (e) {
-      const message = e instanceof Error ? e.message : "Failed to save note."
-      setErr(message)
-      toastError(message)
+    } catch {
+      setErr(INLINE_POWER_SYNC_SAVE_FAILED)
     } finally {
       setIsSaving(false)
     }

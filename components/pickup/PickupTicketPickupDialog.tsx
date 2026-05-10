@@ -16,6 +16,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useEvent } from "@/contexts/EventContext"
+import { inlineMessageForPickupWrite } from "@/lib/constants/inlineErrors"
 import { useCompletePickup } from "@/hooks/useCompletePickup"
 import { usePickupTicketPickupDetail } from "@/hooks/usePickupTicketPickupDetail"
 import { useToast } from "@/hooks/useToast"
@@ -46,7 +47,7 @@ export function PickupTicketPickupDialog({
 }: PickupTicketPickupDialogProps) {
   const { currentEvent } = useEvent()
   const { complete, isSubmitting } = useCompletePickup()
-  const { error, success } = useToast()
+  const { success } = useToast()
 
   const ticketId = ticket?.ticketId ?? null
   const { lines, ticketDevicesRemaining, isLoading: detailLoading, error: detailError } =
@@ -54,6 +55,15 @@ export function PickupTicketPickupDialog({
 
   const [pickQuantities, setPickQuantities] = React.useState<Record<string, number>>({})
   const [verified, setVerified] = React.useState(false)
+  const [pickupWriteError, setPickupWriteError] = React.useState<string | null>(null)
+
+  const onPickQuantityChange = React.useCallback((deviceType: string, next: number) => {
+    setPickupWriteError(null)
+    setPickQuantities((prev) => ({
+      ...prev,
+      [deviceType]: next,
+    }))
+  }, [])
 
   const droppedLinesForLabel: PickupTicketDeviceLine[] = lines.map((l) => ({
     deviceType: l.deviceType,
@@ -75,6 +85,7 @@ export function PickupTicketPickupDialog({
 
   const onSubmit = React.useCallback(async (): Promise<void> => {
     if (!ticket || !currentEvent || !verified) return
+    setPickupWriteError(null)
 
     try {
       const ok = await complete({
@@ -94,7 +105,7 @@ export function PickupTicketPickupDialog({
       }
       onOpenChange(false)
     } catch (e) {
-      error(e instanceof Error ? e.message : "Pick-up failed.")
+      setPickupWriteError(inlineMessageForPickupWrite(e))
     }
   }, [
     complete,
@@ -104,7 +115,6 @@ export function PickupTicketPickupDialog({
     pickQuantities,
     success,
     ticket,
-    error,
     verified,
   ])
 
@@ -161,10 +171,7 @@ export function PickupTicketPickupDialog({
                       line={line}
                       value={pickQuantities[line.deviceType] ?? 0}
                       onChange={(next) => {
-                        setPickQuantities((prev) => ({
-                          ...prev,
-                          [line.deviceType]: next,
-                        }))
+                        onPickQuantityChange(line.deviceType, next)
                       }}
                     />
                   ))}
@@ -181,6 +188,7 @@ export function PickupTicketPickupDialog({
                   id={verifyId}
                   checked={verified}
                   onCheckedChange={(v) => {
+                    setPickupWriteError(null)
                     setVerified(v === true)
                   }}
                   className="mt-1"
@@ -192,6 +200,12 @@ export function PickupTicketPickupDialog({
             </>
           )}
         </div>
+
+        {pickupWriteError ? (
+          <div className="border-t border-border bg-muted/40 px-4 py-3 text-sm text-destructive">
+            {pickupWriteError}
+          </div>
+        ) : null}
 
         <DialogFooter className="bg-muted/40 sm:justify-end">
           <Button
