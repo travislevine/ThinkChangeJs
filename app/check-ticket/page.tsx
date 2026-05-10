@@ -6,12 +6,14 @@ import { useRouter } from "next/navigation"
 
 import { CheckTicketRecordList } from "@/components/check-ticket/CheckTicketRecordList"
 import { CheckTicketSearchControls } from "@/components/check-ticket/CheckTicketSearchControls"
+import { EditCheckTicketSheet } from "@/components/check-ticket/EditCheckTicketSheet"
 import { Button } from "@/components/ui/button"
 import { useSyncStatus } from "@/contexts/SyncStatusContext"
 import { CHECK_TICKET_SORT_MODE } from "@/lib/constants/checkTicket"
 import type { CheckTicketSortMode } from "@/lib/constants/checkTicket"
 import { useCheckTicketRecordDetails } from "@/hooks/useCheckTicketRecordDetails"
 import { useCheckTicketTickets } from "@/hooks/useCheckTicketTickets"
+import { useEditCheckTicket } from "@/hooks/useEditCheckTicket"
 import { usePickupTicketDeviceLines } from "@/hooks/usePickupTicketDeviceLines"
 
 export default function CheckTicketPage() {
@@ -35,9 +37,15 @@ export default function CheckTicketPage() {
   const { notesByTicketId, pickupsByTicketId, isLoading: detailsLoading } =
     useCheckTicketRecordDetails()
 
-  const onEditTicket = React.useCallback(() => {
-    /* Phase 4.4 — edit sheet */
-  }, [])
+  const editTicketController = useEditCheckTicket()
+  const [, editTicketActions] = editTicketController
+
+  const onEditTicket = React.useCallback(
+    (ticketId: string) => {
+      editTicketActions.openFor(ticketId)
+    },
+    [editTicketActions]
+  )
 
   const onAddNote = React.useCallback(() => {
     /* Phase 4.5 — add note sheet */
@@ -127,6 +135,8 @@ export default function CheckTicketPage() {
               ? "Loading tickets."
               : `${tickets.length} ticket${tickets.length === 1 ? "" : "s"} match the current search and sort.`}
         </p>
+
+        <EditCheckTicketSheet controller={editTicketController} />
       </div>
     </div>
   )
