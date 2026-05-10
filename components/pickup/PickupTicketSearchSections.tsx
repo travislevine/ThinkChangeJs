@@ -20,16 +20,6 @@ export interface PickupTicketSearchSectionsProps {
   devicesError: string | null
 }
 
-function TicketLine({ t }: { t: PickupTicketSummary }) {
-  return (
-    <div className="rounded-md border border-border bg-muted/20 px-3 py-3 text-sm">
-      <span className="font-medium text-foreground">#{t.ticketNumber}</span>
-      <span className="text-muted-foreground"> · {t.patronName}</span>
-      {t.mobile ? <span className="block text-xs text-muted-foreground">{t.mobile}</span> : null}
-    </div>
-  )
-}
-
 export function PickupTicketSearchSections({
   activeTickets,
   completedTickets,
@@ -84,21 +74,22 @@ export function PickupTicketSearchSections({
   }
 
   const completedBlock = showCompleted ? (
-    <section className="flex flex-col gap-3" aria-label="Completed tickets">
-      <Separator className="my-1" />
-      <h3 className="text-sm font-medium text-muted-foreground">Completed</h3>
+    <section className="flex flex-col gap-4" aria-label="Completed tickets">
+      <div className="flex items-center gap-3 py-1">
+        <Separator className="flex-1" />
+        <span className="shrink-0 text-sm font-medium text-muted-foreground">Completed</span>
+        <Separator className="flex-1" />
+      </div>
       {completedTickets.length === 0 ? (
         <p className="rounded-lg border border-border bg-muted/20 px-4 py-6 text-center text-sm text-muted-foreground">
           No completed tickets match your search.
         </p>
       ) : (
-        <ul className="flex flex-col gap-2">
-          {completedTickets.map((t) => (
-            <li key={t.ticketId}>
-              <TicketLine t={t} />
-            </li>
-          ))}
-        </ul>
+        <PickupActiveTicketsGrid
+          tickets={completedTickets}
+          deviceLinesByTicketId={deviceLinesByTicketId}
+          completed
+        />
       )}
     </section>
   ) : null
