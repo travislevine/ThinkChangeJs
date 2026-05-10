@@ -3,6 +3,7 @@
 import * as React from "react"
 import { usePathname, useRouter } from "next/navigation"
 
+import { Skeleton } from "@/components/ui/skeleton"
 import { usePinAuth } from "@/hooks/usePinAuth"
 
 export interface AuthGuardProps {
@@ -29,7 +30,11 @@ export function AuthGuard({ children }: AuthGuardProps) {
   }
 
   if (!ready) {
-    return null
+    return (
+      <div className="min-h-[100dvh] bg-background p-4" aria-busy="true">
+        <Skeleton className="mx-auto mt-12 h-12 w-full max-w-md rounded-lg" />
+      </div>
+    )
   }
 
   if (!isAuthorised) {

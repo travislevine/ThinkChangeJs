@@ -3,6 +3,7 @@
 import * as React from "react"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
 import { useEvent } from "@/contexts/EventContext"
 import { useCurrentEventStats } from "@/hooks/useCurrentEventStats"
 
@@ -30,8 +31,38 @@ export function StatsSection() {
     )
   }
 
-  const totalDroppedOff = stats?.totalDroppedOff ?? 0
-  const devicesRemaining = stats?.devicesRemaining ?? 0
+  if (isLoading || !stats) {
+    return (
+      <div className="flex flex-col gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Total Dropped Off</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-9 w-28" />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Devices Remaining</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-9 w-28" />
+            </CardContent>
+          </Card>
+        </div>
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-32 w-full rounded-xl" />
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  const totalDroppedOff = stats.totalDroppedOff
+  const devicesRemaining = stats.devicesRemaining
 
   return (
     <div className="flex flex-col gap-4">
@@ -41,9 +72,7 @@ export function StatsSection() {
             <CardTitle className="text-sm">Total Dropped Off</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-semibold tabular-nums">
-              {isLoading ? "…" : formatNumber(totalDroppedOff)}
-            </div>
+            <div className="text-3xl font-semibold tabular-nums">{formatNumber(totalDroppedOff)}</div>
           </CardContent>
         </Card>
 
@@ -52,15 +81,13 @@ export function StatsSection() {
             <CardTitle className="text-sm">Devices Remaining</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-semibold tabular-nums">
-              {isLoading ? "…" : formatNumber(devicesRemaining)}
-            </div>
+            <div className="text-3xl font-semibold tabular-nums">{formatNumber(devicesRemaining)}</div>
           </CardContent>
         </Card>
       </div>
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {(stats?.byCategory ?? []).map((row) => (
+        {stats.byCategory.map((row) => (
           <Card key={row.category}>
             <CardHeader>
               <CardTitle className="text-sm">{row.category}</CardTitle>
@@ -68,15 +95,11 @@ export function StatsSection() {
             <CardContent className="flex items-baseline justify-between gap-3">
               <div className="flex flex-col gap-1">
                 <div className="text-xs text-muted-foreground">Dropped</div>
-                <div className="text-lg font-semibold tabular-nums">
-                  {isLoading ? "…" : formatNumber(row.droppedOff)}
-                </div>
+                <div className="text-lg font-semibold tabular-nums">{formatNumber(row.droppedOff)}</div>
               </div>
               <div className="flex flex-col gap-1 text-right">
                 <div className="text-xs text-muted-foreground">Remaining</div>
-                <div className="text-lg font-semibold tabular-nums">
-                  {isLoading ? "…" : formatNumber(row.remaining)}
-                </div>
+                <div className="text-lg font-semibold tabular-nums">{formatNumber(row.remaining)}</div>
               </div>
             </CardContent>
           </Card>

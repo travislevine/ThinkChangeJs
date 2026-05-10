@@ -2,6 +2,7 @@
 
 import * as React from "react"
 
+import { PowerSyncBootSkeleton } from "@/components/shared/PowerSyncBootSkeleton"
 import { db, ensurePowerSyncInitialized } from "@/lib/db/powersync"
 import { seedTicketPoolIfEmpty } from "@/lib/db/seedTicketPool"
 import { createBikeParkConnector } from "@/lib/db/sync"
@@ -26,15 +27,17 @@ export function PowerSyncProvider({ children }: PowerSyncProviderProps) {
 
     void (async () => {
       await ensurePowerSyncInitialized()
-      const connector = createBikeParkConnector()
-      const creds = await connector.fetchCredentials()
-      if (creds && !db.connected) {
-        await db.connect(connector)
-      }
+      if (cancelled) return
       await seedTicketPoolIfEmpty(db)
-      if (!cancelled) {
-        setReady(true)
-      }
+      if (cancelled) return
+      setReady(true)
+
+      void (async () => {
+        const connector = createBikeParkConnector()
+        const creds = await connector.fetchCredentials()
+        if (cancelled || !creds || db.connected || db.connecting) return
+        await db.connect(connector)
+      })()
     })()
 
     return () => {
@@ -43,14 +46,7 @@ export function PowerSyncProvider({ children }: PowerSyncProviderProps) {
   }, [])
 
   if (!ready) {
-    return (
-      <div
-        className="flex min-h-screen items-center justify-center bg-background text-muted-foreground"
-        aria-busy="true"
-      >
-        Loading…
-      </div>
-    )
+    return <PowerSyncBootSkeleton />
   }
 
   return (
