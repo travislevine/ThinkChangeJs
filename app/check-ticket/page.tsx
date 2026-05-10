@@ -6,12 +6,14 @@ import { useRouter } from "next/navigation"
 
 import { CheckTicketRecordList } from "@/components/check-ticket/CheckTicketRecordList"
 import { CheckTicketSearchControls } from "@/components/check-ticket/CheckTicketSearchControls"
+import { AddCheckTicketNoteSheet } from "@/components/check-ticket/AddCheckTicketNoteSheet"
 import { EditCheckTicketSheet } from "@/components/check-ticket/EditCheckTicketSheet"
 import { Button } from "@/components/ui/button"
 import { useSyncStatus } from "@/contexts/SyncStatusContext"
 import { CHECK_TICKET_SORT_MODE } from "@/lib/constants/checkTicket"
 import type { CheckTicketSortMode } from "@/lib/constants/checkTicket"
 import { useCheckTicketRecordDetails } from "@/hooks/useCheckTicketRecordDetails"
+import { useAddCheckTicketNote } from "@/hooks/useAddCheckTicketNote"
 import { useCheckTicketTickets } from "@/hooks/useCheckTicketTickets"
 import { useEditCheckTicket } from "@/hooks/useEditCheckTicket"
 import { usePickupTicketDeviceLines } from "@/hooks/usePickupTicketDeviceLines"
@@ -40,6 +42,9 @@ export default function CheckTicketPage() {
   const editTicketController = useEditCheckTicket()
   const [, editTicketActions] = editTicketController
 
+  const addNoteController = useAddCheckTicketNote()
+  const [, addNoteActions] = addNoteController
+
   const onEditTicket = React.useCallback(
     (ticketId: string) => {
       editTicketActions.openFor(ticketId)
@@ -47,9 +52,12 @@ export default function CheckTicketPage() {
     [editTicketActions]
   )
 
-  const onAddNote = React.useCallback(() => {
-    /* Phase 4.5 — add note sheet */
-  }, [])
+  const onAddNote = React.useCallback(
+    (ticketId: string) => {
+      addNoteActions.openFor(ticketId)
+    },
+    [addNoteActions]
+  )
 
   const onDeleteTicket = React.useCallback(() => {
     /* Phase 4.6 — delete dialog */
@@ -137,6 +145,7 @@ export default function CheckTicketPage() {
         </p>
 
         <EditCheckTicketSheet controller={editTicketController} />
+        <AddCheckTicketNoteSheet controller={addNoteController} />
       </div>
     </div>
   )
