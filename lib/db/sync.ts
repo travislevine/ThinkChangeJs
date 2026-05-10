@@ -17,26 +17,34 @@ function canConnectPowerSync(): boolean {
 }
 
 async function applyCrudEntry(entry: CrudEntry): Promise<void> {
+  // `CrudEntry.table` is dynamic. We intentionally use an untyped Supabase call path here;
+  // the strongly typed Supabase client remains available for other parts of the app.
+  type UntypedResult = { error: unknown | null }
+  type UntypedEq = (column: string, value: unknown) => Promise<UntypedResult>
+  type UntypedTable = {
+    delete: () => { eq: UntypedEq }
+    update: (values: Record<string, unknown>) => { eq: UntypedEq }
+    upsert: (values: Record<string, unknown>) => Promise<UntypedResult>
+  }
+
+  const s = supabase as unknown as { from: (table: string) => UntypedTable }
   const table = entry.table
 
   if (entry.op === UpdateType.DELETE) {
-    const { error } = await supabase.from(table).delete().eq("id", entry.id)
+    const { error } = await s.from(table).delete().eq("id", entry.id)
     if (error) throw error
     return
   }
 
   if (entry.op === UpdateType.PATCH) {
-    const { error } = await supabase
-      .from(table)
-      .update({ ...entry.opData })
-      .eq("id", entry.id)
+    const { error } = await s.from(table).update({ ...entry.opData }).eq("id", entry.id)
     if (error) throw error
     return
   }
 
   if (entry.op === UpdateType.PUT) {
     const row = { id: entry.id, ...entry.opData }
-    const { error } = await supabase.from(table).upsert(row)
+    const { error } = await s.from(table).upsert(row as Record<string, unknown>)
     if (error) throw error
   }
 }

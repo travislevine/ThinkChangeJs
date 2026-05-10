@@ -14,6 +14,8 @@ const eslintConfig = defineConfig([
     // Serwist build output:
     "public/sw*.js",
     "next-env.d.ts",
+    // Supabase generated types (may be UTF-16 if generated via PowerShell redirection).
+    "lib/db/database.types.ts",
   ]),
 ]);
 

@@ -32,6 +32,32 @@ function DevServiceWorkerCleanup() {
   return null
 }
 
+function DevUnhandledRejectionLogger() {
+  React.useEffect(() => {
+    if (process.env.NODE_ENV !== "development") return
+
+    const onUnhandledRejection = (event: PromiseRejectionEvent) => {
+      const reason = event.reason as unknown
+      const err =
+        reason instanceof Error ? reason : new Error(typeof reason === "string" ? reason : "Unhandled rejection")
+      console.error("[dev] unhandledrejection", err, err.stack)
+    }
+
+    const onError = (event: ErrorEvent) => {
+      console.error("[dev] error", event.error ?? event.message)
+    }
+
+    window.addEventListener("unhandledrejection", onUnhandledRejection)
+    window.addEventListener("error", onError)
+    return () => {
+      window.removeEventListener("unhandledrejection", onUnhandledRejection)
+      window.removeEventListener("error", onError)
+    }
+  }, [])
+
+  return null
+}
+
 export function ClientProviders({ children, toast }: ClientProvidersProps) {
   return (
     <SerwistProvider swUrl="/sw.js" disable={process.env.NODE_ENV === "development"}>
@@ -42,6 +68,7 @@ export function ClientProviders({ children, toast }: ClientProvidersProps) {
               <PinAuthProvider>
                 <AuthGuard>
                   <DevServiceWorkerCleanup />
+                  <DevUnhandledRejectionLogger />
                   <UpdatePrompt />
                   {children}
                 </AuthGuard>
