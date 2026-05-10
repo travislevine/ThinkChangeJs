@@ -25,6 +25,7 @@ export function UpdatePrompt() {
     const showUpdateToast = (registration: ServiceWorkerRegistration) => {
       if (!registration.waiting) return
 
+      // Persistent update prompt (Phase 5.1): do not auto-dismiss.
       toast("A new version is available", {
         id: UPDATE_TOAST_ID,
         duration: Infinity,

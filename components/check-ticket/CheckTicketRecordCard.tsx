@@ -32,7 +32,7 @@ export interface CheckTicketRecordCardProps {
   pickups: CheckTicketPickupEntry[]
   onEditTicket: (ticketId: string) => void
   onAddNote: (ticketId: string) => void
-  onDeleteTicket: (ticketId: string) => void
+  onDeleteTicket: () => void
 }
 
 function CollapsibleChevron({ open }: { open: boolean }) {
@@ -187,7 +187,7 @@ export function CheckTicketRecordCard({
           className="min-h-[44px] min-w-[44px]"
           aria-label="Delete ticket record"
           onClick={() => {
-            onDeleteTicket(ticket.ticketId)
+            onDeleteTicket()
           }}
         >
           <Trash2Icon className="h-5 w-5" />

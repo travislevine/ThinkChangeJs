@@ -15,7 +15,7 @@ export interface CheckTicketRecordListProps {
   ticketsError: string | null
   onEditTicket: (ticketId: string) => void
   onAddNote: (ticketId: string) => void
-  onDeleteTicket: (ticketId: string) => void
+  onDeleteTicket: (ticketId: string, ticketNumber: number) => void
 }
 
 export function CheckTicketRecordList({
@@ -66,7 +66,9 @@ export function CheckTicketRecordList({
             pickups={pickupsByTicketId[t.ticketId] ?? []}
             onEditTicket={onEditTicket}
             onAddNote={onAddNote}
-            onDeleteTicket={onDeleteTicket}
+            onDeleteTicket={() => {
+              onDeleteTicket(t.ticketId, t.ticketNumber)
+            }}
           />
         </li>
       ))}

@@ -46,7 +46,7 @@ export function PickupTicketPickupDialog({
 }: PickupTicketPickupDialogProps) {
   const { currentEvent } = useEvent()
   const { complete, isSubmitting } = useCompletePickup()
-  const { toast, success } = useToast()
+  const { error, success } = useToast()
 
   const ticketId = ticket?.ticketId ?? null
   const { lines, ticketDevicesRemaining, isLoading: detailLoading, error: detailError } =
@@ -94,7 +94,7 @@ export function PickupTicketPickupDialog({
       }
       onOpenChange(false)
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Pick-up failed.")
+      error(e instanceof Error ? e.message : "Pick-up failed.")
     }
   }, [
     complete,
@@ -104,7 +104,7 @@ export function PickupTicketPickupDialog({
     pickQuantities,
     success,
     ticket,
-    toast,
+    error,
     verified,
   ])
 

@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation"
 import { CheckTicketRecordList } from "@/components/check-ticket/CheckTicketRecordList"
 import { CheckTicketSearchControls } from "@/components/check-ticket/CheckTicketSearchControls"
 import { AddCheckTicketNoteSheet } from "@/components/check-ticket/AddCheckTicketNoteSheet"
+import { DeleteCheckTicketDialog } from "@/components/check-ticket/DeleteCheckTicketDialog"
 import { EditCheckTicketSheet } from "@/components/check-ticket/EditCheckTicketSheet"
 import { Button } from "@/components/ui/button"
 import { useSyncStatus } from "@/contexts/SyncStatusContext"
@@ -15,6 +16,7 @@ import type { CheckTicketSortMode } from "@/lib/constants/checkTicket"
 import { useCheckTicketRecordDetails } from "@/hooks/useCheckTicketRecordDetails"
 import { useAddCheckTicketNote } from "@/hooks/useAddCheckTicketNote"
 import { useCheckTicketTickets } from "@/hooks/useCheckTicketTickets"
+import { useDeleteCheckTicketRecord } from "@/hooks/useDeleteCheckTicketRecord"
 import { useEditCheckTicket } from "@/hooks/useEditCheckTicket"
 import { usePickupTicketDeviceLines } from "@/hooks/usePickupTicketDeviceLines"
 
@@ -45,6 +47,9 @@ export default function CheckTicketPage() {
   const addNoteController = useAddCheckTicketNote()
   const [, addNoteActions] = addNoteController
 
+  const deleteTicketController = useDeleteCheckTicketRecord()
+  const [, deleteTicketActions] = deleteTicketController
+
   const onEditTicket = React.useCallback(
     (ticketId: string) => {
       editTicketActions.openFor(ticketId)
@@ -59,9 +64,12 @@ export default function CheckTicketPage() {
     [addNoteActions]
   )
 
-  const onDeleteTicket = React.useCallback(() => {
-    /* Phase 4.6 — delete dialog */
-  }, [])
+  const onDeleteTicket = React.useCallback(
+    (ticketId: string, ticketNumber: number) => {
+      deleteTicketActions.openFor(ticketId, ticketNumber)
+    },
+    [deleteTicketActions]
+  )
 
   const onBack = React.useCallback(() => {
     router.push("/")
@@ -146,6 +154,7 @@ export default function CheckTicketPage() {
 
         <EditCheckTicketSheet controller={editTicketController} />
         <AddCheckTicketNoteSheet controller={addNoteController} />
+        <DeleteCheckTicketDialog controller={deleteTicketController} />
       </div>
     </div>
   )

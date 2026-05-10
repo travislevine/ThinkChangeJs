@@ -87,7 +87,7 @@ export function PreRegisteredList({ onSelect }: PreRegisteredListProps) {
   useSeedDummyPreRegistered()
 
   const { retrySync } = useSyncStatus()
-  const { toast, success } = useToast()
+  const { error: toastError, success } = useToast()
   const editController = useEditPatronSheetController()
   const [, editActions] = editController
   const [query, setQuery] = React.useState("")
@@ -138,12 +138,12 @@ export function PreRegisteredList({ onSelect }: PreRegisteredListProps) {
 
         onSelect(prefill)
       } catch (e) {
-        toast(e instanceof Error ? e.message : "Failed to load pre-registered patron")
+        toastError(e instanceof Error ? e.message : "Failed to load pre-registered patron")
       } finally {
         setSelectingId(null)
       }
     },
-    [onSelect, selectingId, toast]
+    [onSelect, selectingId, toastError]
   )
 
   const confirmDelete = React.useCallback(async (): Promise<void> => {
@@ -156,11 +156,11 @@ export function PreRegisteredList({ onSelect }: PreRegisteredListProps) {
       })
       success(`${target.name} removed`)
     } catch (e) {
-      toast(e instanceof Error ? e.message : "Failed to remove patron")
+      toastError(e instanceof Error ? e.message : "Failed to remove patron")
     } finally {
       setDeleteTarget(null)
     }
-  }, [deleteTarget, success, toast])
+  }, [deleteTarget, toastError, success])
 
   return (
     <section className="flex flex-col gap-4">

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import { ClientProviders } from "@/components/shared/ClientProviders"
+import { ToastMount } from "@/components/shared/ToastMount"
 import "./globals.css";
 
 const geistSans = Geist({
@@ -40,7 +41,7 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">
-        <ClientProviders>{children}</ClientProviders>
+        <ClientProviders toast={<ToastMount />}>{children}</ClientProviders>
       </body>
     </html>
   );
