@@ -51,6 +51,18 @@ export function PowerSyncProvider({ children }: PowerSyncProviderProps) {
       if (cancelled) return
       if (!syncResult.ok) {
         setInitError((prev) => prev ?? syncResult.error)
+      } else if (db.connected) {
+        try {
+          const firstSync = new AbortController()
+          const timeout = window.setTimeout(() => firstSync.abort(), 30_000)
+          try {
+            await db.waitForFirstSync(firstSync.signal)
+          } finally {
+            window.clearTimeout(timeout)
+          }
+        } catch {
+          // Boot continues if the first download is slow; manual refresh can retry sync.
+        }
       }
 
       await seedTicketPoolIfEmpty(db)

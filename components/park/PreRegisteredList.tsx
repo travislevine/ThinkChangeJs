@@ -20,7 +20,6 @@ import {
 import { useSyncStatus } from "@/contexts/SyncStatusContext"
 import { useToast } from "@/hooks/useToast"
 import { usePreRegisteredPatrons } from "@/hooks/usePreRegisteredPatrons"
-import { useSeedDummyPreRegistered } from "@/hooks/useSeedDummyPreRegistered"
 import { db } from "@/lib/db/powersync"
 import { COLOURS } from "@/lib/constants/colours"
 import { DEVICE_CATEGORIES } from "@/lib/constants/deviceCategories"
@@ -84,8 +83,6 @@ function defaultPrefill(): DropOffBlankEntryFormState {
 }
 
 export function PreRegisteredList({ onSelect }: PreRegisteredListProps) {
-  useSeedDummyPreRegistered()
-
   const { requestSync } = useSyncStatus()
   const { error: toastError, success } = useToast()
   const editController = useEditPatronSheetController()
@@ -199,14 +196,6 @@ export function PreRegisteredList({ onSelect }: PreRegisteredListProps) {
       ) : patrons.length === 0 ? (
         <div className="rounded-lg border border-border bg-muted/20 px-4 py-10 text-center text-sm text-muted-foreground">
           No pre-registered patrons found.
-          {process.env.NODE_ENV !== "development" &&
-          process.env.NEXT_PUBLIC_ENABLE_DUMMY_DATA !== "true" ? (
-            <div className="mt-2 text-xs">
-              To seed dummy patrons for testing in production mode, set{" "}
-              <span className="font-medium">NEXT_PUBLIC_ENABLE_DUMMY_DATA=true</span> in
-              <span className="font-medium"> .env.local</span>, then rebuild.
-            </div>
-          ) : null}
         </div>
       ) : (
         <div className="flex flex-col gap-3">
