@@ -5,8 +5,19 @@ import * as React from "react"
 import { db } from "@/lib/db/powersync"
 import type { ArchivedEventSnapshot, EventSummary, StartNewEventParams } from "@/lib/types/event"
 
-const ACTIVE_EVENT_SQL =
-  "SELECT id, name, started_at FROM events WHERE is_active = 1 ORDER BY started_at DESC LIMIT 1"
+const ACTIVE_EVENT_SQL = `
+  SELECT id, name, started_at
+  FROM events
+  WHERE is_active = 1
+  ORDER BY (
+    SELECT COUNT(*)
+    FROM tickets t
+    WHERE t.event_id = events.id
+      AND t.deleted_at IS NULL
+  ) DESC,
+  started_at DESC
+  LIMIT 1
+`
 
 export interface EventContextValue {
   currentEvent: EventSummary | null

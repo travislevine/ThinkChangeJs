@@ -38,6 +38,14 @@ function canConnectPowerSync(): boolean {
   return Boolean(process.env.NEXT_PUBLIC_POWERSYNC_URL?.trim() && isSupabaseConfigured())
 }
 
+function isTicketsSoftDeletePatch(entry: CrudEntry): boolean {
+  if (entry.table !== "tickets" || entry.op !== UpdateType.PATCH) {
+    return false
+  }
+  const deletedAt = entry.opData?.deleted_at
+  return deletedAt != null && deletedAt !== ""
+}
+
 async function applyCrudEntry(entry: CrudEntry): Promise<void> {
   // `CrudEntry.table` is dynamic. We intentionally use an untyped Supabase call path here;
   // the strongly typed Supabase client remains available for other parts of the app.
@@ -63,6 +71,11 @@ async function applyCrudEntry(entry: CrudEntry): Promise<void> {
   }
 
   if (entry.op === UpdateType.PATCH) {
+    if (isTicketsSoftDeletePatch(entry)) {
+      const { error } = await s.from(table).delete().eq("id", entry.id)
+      if (error) throw error
+      return
+    }
     const { error } = await s.from(table).update({ ...entry.opData }).eq("id", entry.id)
     if (error) throw error
     return
@@ -102,13 +115,15 @@ export function createBikeParkConnector(): PowerSyncBackendConnector {
       if (!isSupabaseConfigured()) {
         return
       }
-      let batch = await database.getCrudBatch()
-      while (batch) {
-        for (const entry of batch.crud) {
+      await getPowerSyncSupabaseAccessToken()
+
+      let transaction = await database.getNextCrudTransaction()
+      while (transaction) {
+        for (const entry of transaction.crud) {
           await applyCrudEntry(entry)
         }
-        await batch.complete()
-        batch = await database.getCrudBatch()
+        await transaction.complete()
+        transaction = await database.getNextCrudTransaction()
       }
     },
   }

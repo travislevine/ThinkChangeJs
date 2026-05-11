@@ -18,8 +18,17 @@ export async function seedTicketPoolIfEmpty(database: AbstractPowerSyncDatabase)
 
   await database.writeTransaction(async (tx) => {
     let eventId = await tx.getOptional<{ id: string }>(
-      "SELECT id FROM events WHERE is_active = 1 LIMIT 1"
+      "SELECT id FROM events WHERE is_active = 1 ORDER BY started_at DESC LIMIT 1"
     )
+
+    if (!eventId) {
+      eventId = await tx.getOptional<{ id: string }>(
+        "SELECT id FROM events ORDER BY started_at DESC LIMIT 1"
+      )
+      if (eventId) {
+        await tx.execute("UPDATE events SET is_active = 1, ended_at = NULL WHERE id = ?", [eventId.id])
+      }
+    }
 
     if (!eventId) {
       const id = crypto.randomUUID()

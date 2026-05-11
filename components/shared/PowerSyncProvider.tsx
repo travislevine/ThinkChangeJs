@@ -8,6 +8,7 @@ import {
   db,
   ensurePowerSyncInitialized,
 } from "@/lib/db/powersync"
+import { consolidateDuplicateActiveEvents } from "@/lib/db/reconcileActiveEvents"
 import { seedTicketPoolIfEmpty } from "@/lib/db/seedTicketPool"
 import { getOrCreateDeviceUuid } from "@/lib/deviceUuid"
 
@@ -43,18 +44,20 @@ export function PowerSyncProvider({ children }: PowerSyncProviderProps) {
         return
       }
       if (cancelled) return
+
+      // Download first when credentials exist so we do not create a local-only "Default event"
+      // + pool that later conflicts with server `events` (two `is_active = 1` → wrong `event_id` for lists).
+      const syncResult = await connectBikeParkPowerSync()
+      if (cancelled) return
+      if (!syncResult.ok) {
+        setInitError((prev) => prev ?? syncResult.error)
+      }
+
       await seedTicketPoolIfEmpty(db)
       if (cancelled) return
+      await consolidateDuplicateActiveEvents(db)
+      if (cancelled) return
       setReady(true)
-
-      void (async () => {
-        if (cancelled) return
-        const syncResult = await connectBikeParkPowerSync()
-        if (cancelled) return
-        if (!syncResult.ok) {
-          setInitError((prev) => prev ?? syncResult.error)
-        }
-      })()
     })()
 
     return () => {
