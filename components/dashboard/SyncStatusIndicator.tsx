@@ -45,9 +45,9 @@ export function SyncStatusIndicator() {
     <div className="flex items-center gap-3">
       <span className="flex items-center gap-2">
         <span className={"h-2.5 w-2.5 rounded-full " + dotClasses(syncState)} aria-hidden="true" />
-        <span className="text-sm font-medium">{label}</span>
+        <span className="text-sm font-medium text-emerald-900 dark:text-emerald-50">{label}</span>
       </span>
-      <span className="hidden text-xs text-muted-foreground sm:inline">
+      <span className="hidden text-xs text-emerald-800/80 sm:inline dark:text-emerald-100/80">
         {formatLastSyncedAt(lastSyncedAt)}
       </span>
     </div>
