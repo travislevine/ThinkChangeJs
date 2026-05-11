@@ -1,0 +1,33 @@
+# PowerSync Sync Streams (edition 3)
+# Paste into PowerSync Dashboard → Sync Streams, or reference from self-hosted sync_config.
+#
+# Docs: https://docs.powersync.com/sync/streams/overview
+#
+# Recommendation for BikePark (staff devices, one operational dataset):
+# - Syncing all tables to every client is reasonable: everyone needs events, tickets, pool, etc.
+# - Later, if archived data or old events get large, add a second stream or filter by active event.
+#
+# Tables match `lib/db/schema.ts` / `supabase/migrations/0001_init_bikepark.sql`.
+# Use lowercase table names (PowerSync guidance).
+
+config:
+  edition: 3
+
+streams:
+  bikepark_global:
+    # Same rows to all connected clients; auto-sync on connect (matches typical “sync everything” dev).
+    auto_subscribe: true
+    queries:
+      - SELECT * FROM events
+      - SELECT * FROM ticket_numbers
+      - SELECT * FROM tickets
+      - SELECT * FROM devices
+      - SELECT * FROM pickup_events
+      - SELECT * FROM pickup_event_devices
+      - SELECT * FROM notes
+      - SELECT * FROM archived_events
+
+  # Example for later (per-user JWT) — uncomment and wire auth when you leave “open RLS”:
+  # my_tickets_only:
+  #   auto_subscribe: true
+  #   query: SELECT * FROM tickets WHERE tickets.some_owner_column = auth.user_id()

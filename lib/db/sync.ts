@@ -5,15 +5,37 @@ import type {
 } from "@powersync/common"
 import { UpdateType } from "@powersync/common"
 
-import { isSupabaseConfigured, supabase } from "@/lib/db/supabase"
+import {
+  getPowerSyncSupabaseAccessToken,
+  isSupabaseConfigured,
+  supabase,
+} from "@/lib/db/supabase"
+
+/** Tables that exist in Postgres + `lib/db/schema.ts`; reject anything else from CRUD upload. */
+export const BIKEPARK_SYNC_TABLES = [
+  "archived_events",
+  "devices",
+  "events",
+  "notes",
+  "pickup_event_devices",
+  "pickup_events",
+  "ticket_numbers",
+  "tickets",
+] as const
+
+export type BikeParkSyncTable = (typeof BIKEPARK_SYNC_TABLES)[number]
+
+function isBikeParkSyncTable(name: string): name is BikeParkSyncTable {
+  return (BIKEPARK_SYNC_TABLES as readonly string[]).includes(name)
+}
+
+function normalizePowerSyncEndpoint(raw: string): string {
+  const trimmed = raw.trim()
+  return trimmed.endsWith("/") ? trimmed.slice(0, -1) : trimmed
+}
 
 function canConnectPowerSync(): boolean {
-  const endpoint = process.env.NEXT_PUBLIC_POWERSYNC_URL
-  const token =
-    process.env.NEXT_PUBLIC_POWERSYNC_TOKEN ??
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
-    ""
-  return Boolean(endpoint && token)
+  return Boolean(process.env.NEXT_PUBLIC_POWERSYNC_URL?.trim() && isSupabaseConfigured())
 }
 
 async function applyCrudEntry(entry: CrudEntry): Promise<void> {
@@ -30,6 +52,10 @@ async function applyCrudEntry(entry: CrudEntry): Promise<void> {
   const s = supabase as unknown as { from: (table: string) => UntypedTable }
   const table = entry.table
 
+  if (!isBikeParkSyncTable(table)) {
+    throw new Error(`PowerSync upload: unknown table "${table}"`)
+  }
+
   if (entry.op === UpdateType.DELETE) {
     const { error } = await s.from(table).delete().eq("id", entry.id)
     if (error) throw error
@@ -43,8 +69,8 @@ async function applyCrudEntry(entry: CrudEntry): Promise<void> {
   }
 
   if (entry.op === UpdateType.PUT) {
-    const row = { id: entry.id, ...entry.opData }
-    const { error } = await s.from(table).upsert(row as Record<string, unknown>)
+    const row = { ...(entry.opData as Record<string, unknown>), id: entry.id }
+    const { error } = await s.from(table).upsert(row)
     if (error) throw error
   }
 }
@@ -55,15 +81,27 @@ export function createBikeParkConnector(): PowerSyncBackendConnector {
       if (!canConnectPowerSync() || !isSupabaseConfigured()) {
         return null
       }
+      const endpoint = normalizePowerSyncEndpoint(process.env.NEXT_PUBLIC_POWERSYNC_URL!)
+      const staticToken = process.env.NEXT_PUBLIC_POWERSYNC_TOKEN?.trim()
+      if (staticToken) {
+        return { endpoint, token: staticToken }
+      }
+
+      const sessionAuth = await getPowerSyncSupabaseAccessToken()
+      if (!sessionAuth) {
+        return null
+      }
       return {
-        endpoint: process.env.NEXT_PUBLIC_POWERSYNC_URL!,
-        token:
-          process.env.NEXT_PUBLIC_POWERSYNC_TOKEN ??
-          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        endpoint,
+        token: sessionAuth.token,
+        ...(sessionAuth.expiresAt != null ? { expiresAt: sessionAuth.expiresAt } : {}),
       }
     },
 
     uploadData: async (database: AbstractPowerSyncDatabase): Promise<void> => {
+      if (!isSupabaseConfigured()) {
+        return
+      }
       let batch = await database.getCrudBatch()
       while (batch) {
         for (const entry of batch.crud) {

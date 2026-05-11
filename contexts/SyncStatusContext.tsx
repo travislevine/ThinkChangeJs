@@ -2,14 +2,14 @@
 
 import * as React from "react"
 
-import { db } from "@/lib/db/powersync"
-import { createBikeParkConnector } from "@/lib/db/sync"
+import { connectBikeParkPowerSync, db } from "@/lib/db/powersync"
 import {
   CONNECTIVITY_PROBE_INTERVAL_MS,
   CONNECTIVITY_PROBE_TIMEOUT_MS,
   CONNECTIVITY_PROBE_URL,
 } from "@/lib/constants/sync"
 import { toAppSyncState, toLastSyncedAt } from "@/lib/sync/appSyncState"
+import { formatSyncFlowError } from "@/lib/sync/formatSyncFlowError"
 import type { SyncState } from "@/lib/types/sync"
 
 export interface SyncStatusContextValue {
@@ -18,6 +18,8 @@ export interface SyncStatusContextValue {
   hasSyncError: boolean
   /** Stable-ish key for the current download/upload error; empty when none (Phase 5.4 dismiss logic). */
   syncIssueFingerprint: string
+  /** Human-readable detail from PowerSync (download/upload pipeline). */
+  syncErrorDetail: string | null
   retrySync: () => Promise<void>
 }
 
@@ -98,22 +100,37 @@ export function SyncStatusProvider({ children }: { children: React.ReactNode }) 
     const flow = status.dataFlowStatus
     const parts: string[] = []
     if (flow?.downloadError != null) {
-      parts.push(`download:${String(flow.downloadError)}`)
+      parts.push(`download:${formatSyncFlowError(flow.downloadError)}`)
     }
     if (flow?.uploadError != null) {
-      parts.push(`upload:${String(flow.uploadError)}`)
+      parts.push(`upload:${formatSyncFlowError(flow.uploadError)}`)
     }
     return parts.join("|")
   }, [status])
 
   const hasSyncError = syncIssueFingerprint.length > 0
 
+  const syncErrorDetail = React.useMemo(() => {
+    const flow = status.dataFlowStatus
+    const parts: string[] = []
+    if (flow?.downloadError != null) {
+      parts.push(`Download: ${formatSyncFlowError(flow.downloadError)}`)
+    }
+    if (flow?.uploadError != null) {
+      parts.push(`Upload: ${formatSyncFlowError(flow.uploadError)}`)
+    }
+    return parts.length > 0 ? parts.join(" · ") : null
+  }, [status])
+
   const retrySync = React.useCallback(async (): Promise<void> => {
-    const connector = createBikeParkConnector()
-    const creds = await connector.fetchCredentials()
-    if (!creds) return
-    if (db.connected || db.connecting) return
-    await db.connect(connector)
+    try {
+      if (db.connected || db.connecting) {
+        await db.disconnect()
+      }
+      await connectBikeParkPowerSync()
+    } catch {
+      // PowerSync will surface a new status via the db listener.
+    }
   }, [])
 
   const value = React.useMemo<SyncStatusContextValue>(
@@ -122,9 +139,10 @@ export function SyncStatusProvider({ children }: { children: React.ReactNode }) 
       lastSyncedAt,
       hasSyncError,
       syncIssueFingerprint,
+      syncErrorDetail,
       retrySync,
     }),
-    [syncState, lastSyncedAt, hasSyncError, syncIssueFingerprint, retrySync]
+    [syncState, lastSyncedAt, hasSyncError, syncIssueFingerprint, syncErrorDetail, retrySync]
   )
 
   return <SyncStatusContext.Provider value={value}>{children}</SyncStatusContext.Provider>

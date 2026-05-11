@@ -3,9 +3,12 @@
 import * as React from "react"
 
 import { PowerSyncBootSkeleton } from "@/components/shared/PowerSyncBootSkeleton"
-import { db, ensurePowerSyncInitialized } from "@/lib/db/powersync"
+import {
+  connectBikeParkPowerSync,
+  db,
+  ensurePowerSyncInitialized,
+} from "@/lib/db/powersync"
 import { seedTicketPoolIfEmpty } from "@/lib/db/seedTicketPool"
-import { createBikeParkConnector } from "@/lib/db/sync"
 import { getOrCreateDeviceUuid } from "@/lib/deviceUuid"
 
 const PowerSyncReadyContext = React.createContext(false)
@@ -45,16 +48,11 @@ export function PowerSyncProvider({ children }: PowerSyncProviderProps) {
       setReady(true)
 
       void (async () => {
-        const connector = createBikeParkConnector()
-        const creds = await connector.fetchCredentials()
-        if (cancelled || !creds || db.connected || db.connecting) return
-        try {
-          await db.connect(connector)
-        } catch (e) {
-          if (cancelled) return
-          const message =
-            e instanceof Error ? e.message : "Sync connection failed to start."
-          setInitError((prev) => prev ?? message)
+        if (cancelled) return
+        const syncResult = await connectBikeParkPowerSync()
+        if (cancelled) return
+        if (!syncResult.ok) {
+          setInitError((prev) => prev ?? syncResult.error)
         }
       })()
     })()
