@@ -2,7 +2,7 @@
 
 import * as React from "react"
 
-import { connectBikeParkPowerSync, db } from "@/lib/db/powersync"
+import { db } from "@/lib/db/powersync"
 import {
   CONNECTIVITY_PROBE_INTERVAL_MS,
   CONNECTIVITY_PROBE_TIMEOUT_MS,
@@ -10,6 +10,10 @@ import {
 } from "@/lib/constants/sync"
 import { toAppSyncState, toLastSyncedAt } from "@/lib/sync/appSyncState"
 import { formatSyncFlowError } from "@/lib/sync/formatSyncFlowError"
+import {
+  reconnectPowerSyncNow,
+  scheduleDebouncedPowerSyncReconnect,
+} from "@/lib/sync/powerSyncReconnect"
 import type { SyncState } from "@/lib/types/sync"
 
 export interface SyncStatusContextValue {
@@ -20,7 +24,20 @@ export interface SyncStatusContextValue {
   syncIssueFingerprint: string
   /** Human-readable detail from PowerSync (download/upload pipeline). */
   syncErrorDetail: string | null
+  /** Snapshot from PowerSync `db.currentStatus` (updated via `registerListener`). */
+  powerSync: {
+    connected: boolean
+    connecting: boolean
+    hasSynced: boolean | undefined
+    downloading: boolean
+    uploading: boolean
+  }
+  /** Manual reconnect (Park / Check Ticket refresh buttons, banner “Retry sync”). */
   retrySync: () => Promise<void>
+  /** Same as `retrySync` — explicit name for Phase 6.3 “request sync” call sites. */
+  requestSync: () => Promise<void>
+  /** Debounced reconnect for visibility / coming back online (Phase 6.3). */
+  scheduleSyncReconnect: () => void
 }
 
 const SyncStatusContext = React.createContext<SyncStatusContextValue | null>(null)
@@ -62,8 +79,8 @@ export function SyncStatusProvider({ children }: { children: React.ReactNode }) 
 
   React.useEffect(() => {
     const removeDbListener = db.registerListener({
-      statusChanged: (status) => {
-        setStatus(status)
+      statusChanged: (next) => {
+        setStatus(next)
       },
     })
 
@@ -91,6 +108,39 @@ export function SyncStatusProvider({ children }: { children: React.ReactNode }) 
       window.removeEventListener("offline", onConnectivityHint)
       ac.abort()
       window.clearInterval(timer)
+    }
+  }, [])
+
+  /** Phase 6.3 — tab visible again: coalesced reconnect so downloads/uploads catch up. */
+  React.useEffect(() => {
+    const onVisibility = (): void => {
+      if (document.visibilityState === "visible") {
+        scheduleDebouncedPowerSyncReconnect()
+      }
+    }
+    document.addEventListener("visibilitychange", onVisibility)
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility)
+    }
+  }, [])
+
+  /** Phase 6.3 — browser reports network back: reconnect after offline gap. */
+  const wasOfflineRef = React.useRef(typeof navigator !== "undefined" ? !navigator.onLine : false)
+  React.useEffect(() => {
+    const onOnline = (): void => {
+      if (wasOfflineRef.current) {
+        wasOfflineRef.current = false
+        scheduleDebouncedPowerSyncReconnect()
+      }
+    }
+    const onOffline = (): void => {
+      wasOfflineRef.current = true
+    }
+    window.addEventListener("online", onOnline)
+    window.addEventListener("offline", onOffline)
+    return () => {
+      window.removeEventListener("online", onOnline)
+      window.removeEventListener("offline", onOffline)
     }
   }, [])
 
@@ -123,15 +173,25 @@ export function SyncStatusProvider({ children }: { children: React.ReactNode }) 
   }, [status])
 
   const retrySync = React.useCallback(async (): Promise<void> => {
-    try {
-      if (db.connected || db.connecting) {
-        await db.disconnect()
-      }
-      await connectBikeParkPowerSync()
-    } catch {
-      // PowerSync will surface a new status via the db listener.
-    }
+    await reconnectPowerSyncNow()
   }, [])
+
+  const requestSync = retrySync
+
+  const scheduleSyncReconnect = React.useCallback(() => {
+    scheduleDebouncedPowerSyncReconnect()
+  }, [])
+
+  const powerSync = React.useMemo(
+    () => ({
+      connected: status.connected,
+      connecting: status.connecting,
+      hasSynced: status.hasSynced,
+      downloading: status.dataFlowStatus.downloading ?? false,
+      uploading: status.dataFlowStatus.uploading ?? false,
+    }),
+    [status]
+  )
 
   const value = React.useMemo<SyncStatusContextValue>(
     () => ({
@@ -140,9 +200,22 @@ export function SyncStatusProvider({ children }: { children: React.ReactNode }) 
       hasSyncError,
       syncIssueFingerprint,
       syncErrorDetail,
+      powerSync,
       retrySync,
+      requestSync,
+      scheduleSyncReconnect,
     }),
-    [syncState, lastSyncedAt, hasSyncError, syncIssueFingerprint, syncErrorDetail, retrySync]
+    [
+      syncState,
+      lastSyncedAt,
+      hasSyncError,
+      syncIssueFingerprint,
+      syncErrorDetail,
+      powerSync,
+      retrySync,
+      requestSync,
+      scheduleSyncReconnect,
+    ]
   )
 
   return <SyncStatusContext.Provider value={value}>{children}</SyncStatusContext.Provider>

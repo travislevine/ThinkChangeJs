@@ -86,7 +86,7 @@ function defaultPrefill(): DropOffBlankEntryFormState {
 export function PreRegisteredList({ onSelect }: PreRegisteredListProps) {
   useSeedDummyPreRegistered()
 
-  const { retrySync } = useSyncStatus()
+  const { requestSync } = useSyncStatus()
   const { error: toastError, success } = useToast()
   const editController = useEditPatronSheetController()
   const [, editActions] = editController
@@ -101,11 +101,11 @@ export function PreRegisteredList({ onSelect }: PreRegisteredListProps) {
     if (refreshing) return
     try {
       setRefreshing(true)
-      await retrySync()
+      await requestSync()
     } finally {
       setRefreshing(false)
     }
-  }, [refreshing, retrySync])
+  }, [refreshing, requestSync])
 
   const selectPatron = React.useCallback(
     async (ticketId: string, base: Omit<DropOffBlankEntryFormState, "devices" | "notes"> & { ticketNumber: string }) => {

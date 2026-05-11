@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { useSyncStatus } from "@/contexts/SyncStatusContext"
 
 export function SyncFailureBanner() {
-  const { hasSyncError, syncIssueFingerprint, syncErrorDetail, retrySync } = useSyncStatus()
+  const { hasSyncError, syncIssueFingerprint, syncErrorDetail, requestSync } = useSyncStatus()
   const [dismissedFingerprint, setDismissedFingerprint] = React.useState("")
 
   const visible = hasSyncError && dismissedFingerprint !== syncIssueFingerprint
@@ -39,7 +39,7 @@ export function SyncFailureBanner() {
           size="sm"
           className="min-h-[44px] shrink-0"
           onClick={() => {
-            void retrySync()
+            void requestSync()
           }}
         >
           Retry sync

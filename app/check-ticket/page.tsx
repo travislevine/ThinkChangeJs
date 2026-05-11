@@ -22,7 +22,7 @@ import { usePickupTicketDeviceLines } from "@/hooks/usePickupTicketDeviceLines"
 
 export default function CheckTicketPage() {
   const router = useRouter()
-  const { retrySync } = useSyncStatus()
+  const { requestSync } = useSyncStatus()
   const [refreshing, setRefreshing] = React.useState(false)
   const [searchQuery, setSearchQuery] = React.useState("")
   const [sortMode, setSortMode] = React.useState<CheckTicketSortMode>(
@@ -81,11 +81,11 @@ export default function CheckTicketPage() {
     if (refreshing) return
     try {
       setRefreshing(true)
-      await retrySync()
+      await requestSync()
     } finally {
       setRefreshing(false)
     }
-  }, [refreshing, retrySync])
+  }, [refreshing, requestSync])
 
   const listLoading = ticketsLoading || devicesLoading || detailsLoading
 
