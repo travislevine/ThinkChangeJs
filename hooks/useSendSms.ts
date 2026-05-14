@@ -8,6 +8,7 @@ import { SMS_SENT_STATUS_RESET_MS } from "@/lib/constants/sms"
 import { TOAST_DURATION_SMS_MS } from "@/lib/constants/toastDurations"
 import { appendSmsNote } from "@/lib/smsNotes"
 import type {
+  SendSmsErrorResponse,
   SendSmsStatus,
   SendSmsSuccessResponse,
   UseSendSmsResult,
@@ -19,6 +20,17 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isSendSmsSuccessResponse(value: unknown): value is SendSmsSuccessResponse {
   return isRecord(value) && value.success === true && typeof value.sid === "string"
+}
+
+function readSendSmsErrorToastMessage(payload: unknown): string {
+  if (
+    isRecord(payload) &&
+    typeof payload.error === "string" &&
+    payload.error.trim().length > 0
+  ) {
+    return (payload as SendSmsErrorResponse).error.trim()
+  }
+  return "SMS failed to send. Check the mobile number."
 }
 
 const smsToastOptions = { duration: TOAST_DURATION_SMS_MS } as const
@@ -74,7 +86,7 @@ export function useSendSms(ticketId: string): UseSendSmsResult {
 
         if (!response.ok || !isSendSmsSuccessResponse(payload)) {
           setStatus("error")
-          toastError("SMS failed to send. Check the mobile number.", smsToastOptions)
+          toastError(readSendSmsErrorToastMessage(payload), smsToastOptions)
           setTimeout(() => {
             setStatus("idle")
             statusRef.current = "idle"

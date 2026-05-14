@@ -1,6 +1,7 @@
 import twilio from "twilio"
 import { NextResponse } from "next/server"
 
+import { mapTwilioSmsErrorToClientMessage } from "@/lib/server/mapTwilioSmsError"
 import { logRouteHandlerError } from "@/lib/server/routeErrorLog"
 import type {
   SendSmsErrorResponse,
@@ -121,7 +122,9 @@ export async function POST(request: Request): Promise<NextResponse> {
     return NextResponse.json(payload, { status: 200 })
   } catch (error: unknown) {
     logRouteHandlerError("send-sms", error)
-    const payload: SendSmsErrorResponse = { error: "SMS delivery failed" }
+    const payload: SendSmsErrorResponse = {
+      error: mapTwilioSmsErrorToClientMessage(error),
+    }
     return NextResponse.json(payload, { status: 500 })
   }
 }
