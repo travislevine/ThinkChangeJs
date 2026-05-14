@@ -7,6 +7,7 @@ import type {
   SendSmsRequest,
   SendSmsSuccessResponse,
 } from "@/lib/types/sendSms"
+import { buildBikeParkReadySmsBody } from "@/lib/utils/smsMessageBody"
 import { sanitizeSmsToE164 } from "@/lib/utils/sanitizeSmsTo"
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -65,18 +66,6 @@ function parseSendSmsRequest(
   }
 }
 
-function buildSmsBody(ticketNumber: number, patronName: string | null): string {
-  const greeting =
-    patronName !== null && patronName.trim().length > 0
-      ? patronName.trim()
-      : "there"
-
-  return [
-    `Hi ${greeting}, your items are ready for collection at BikePark.`,
-    `Please present Ticket #${ticketNumber} to collect them.`,
-  ].join("\n")
-}
-
 export async function POST(request: Request): Promise<NextResponse> {
   let parsed: unknown
   try {
@@ -112,7 +101,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     return NextResponse.json(payload, { status: 500 })
   }
 
-  const messageBody = buildSmsBody(
+  const messageBody = buildBikeParkReadySmsBody(
     parsedBody.value.ticketNumber,
     parsedBody.value.patronName,
   )

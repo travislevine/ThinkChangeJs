@@ -19,3 +19,20 @@ export interface SendSmsSuccessResponse {
 export interface SendSmsErrorResponse {
   error: string
 }
+
+export interface SendSmsButtonProps {
+  ticketId: string
+  ticketNumber: number
+  patronName: string | null
+  mobile: string
+  isOffline: boolean
+}
+
+export interface SendSmsDialogProps {
+  open: boolean
+  onConfirm: () => void
+  onCancel: () => void
+  mobile: string
+  patronName: string | null
+  ticketNumber: number
+}

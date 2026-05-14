@@ -8,6 +8,7 @@ import { AuthGuard } from "@/components/shared/AuthGuard"
 import { PowerSyncProvider } from "@/components/shared/PowerSyncProvider"
 import { ThemeProvider } from "@/components/shared/ThemeProvider"
 import { UpdatePrompt } from "@/components/shared/UpdatePrompt"
+import { TooltipProvider } from "@/components/ui/tooltip"
 import { EventProvider } from "@/contexts/EventContext"
 import { SyncStatusProvider } from "@/contexts/SyncStatusContext"
 import { PinAuthProvider } from "@/hooks/usePinAuth"
@@ -62,21 +63,23 @@ export function ClientProviders({ children, toast }: ClientProvidersProps) {
   return (
     <SerwistProvider swUrl="/sw.js" disable={process.env.NODE_ENV === "development"}>
       <ThemeProvider>
-        <PowerSyncProvider>
-          <EventProvider>
-            <SyncStatusProvider>
-              <PinAuthProvider>
-                <AuthGuard>
-                  <DevServiceWorkerCleanup />
-                  <DevUnhandledRejectionLogger />
-                  <UpdatePrompt />
-                  {children}
-                </AuthGuard>
-              </PinAuthProvider>
-            </SyncStatusProvider>
-          </EventProvider>
-        </PowerSyncProvider>
-        {toast}
+        <TooltipProvider delayDuration={300}>
+          <PowerSyncProvider>
+            <EventProvider>
+              <SyncStatusProvider>
+                <PinAuthProvider>
+                  <AuthGuard>
+                    <DevServiceWorkerCleanup />
+                    <DevUnhandledRejectionLogger />
+                    <UpdatePrompt />
+                    {children}
+                  </AuthGuard>
+                </PinAuthProvider>
+              </SyncStatusProvider>
+            </EventProvider>
+          </PowerSyncProvider>
+          {toast}
+        </TooltipProvider>
       </ThemeProvider>
     </SerwistProvider>
   )

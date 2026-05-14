@@ -3,6 +3,9 @@
 import * as React from "react"
 import { ChevronDownIcon, PencilIcon, StickyNote, Trash2Icon } from "lucide-react"
 
+import { useSyncStatus } from "@/contexts/SyncStatusContext"
+
+import { SendSmsButton } from "@/components/check-ticket/SendSmsButton"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
@@ -53,6 +56,13 @@ export function CheckTicketRecordCard({
   onAddNote,
   onDeleteTicket,
 }: CheckTicketRecordCardProps) {
+  const { syncState } = useSyncStatus()
+  const isOffline = syncState === "offline"
+  const mobileTrimmed = ticket.mobile?.trim() ?? ""
+  const hasMobile = mobileTrimmed.length > 0
+  const patronForSms =
+    ticket.patronName.trim().length > 0 ? ticket.patronName.trim() : null
+
   const [notesOpen, setNotesOpen] = React.useState(false)
   const [pickupsOpen, setPickupsOpen] = React.useState(false)
 
@@ -180,6 +190,15 @@ export function CheckTicketRecordCard({
         >
           <StickyNote className="h-5 w-5" />
         </Button>
+        {hasMobile ? (
+          <SendSmsButton
+            ticketId={ticket.ticketId}
+            ticketNumber={ticket.ticketNumber}
+            patronName={patronForSms}
+            mobile={mobileTrimmed}
+            isOffline={isOffline}
+          />
+        ) : null}
         <Button
           type="button"
           variant="destructive"
