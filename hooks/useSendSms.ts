@@ -8,7 +8,6 @@ import { SMS_SENT_STATUS_RESET_MS } from "@/lib/constants/sms"
 import { TOAST_DURATION_SMS_MS } from "@/lib/constants/toastDurations"
 import { appendSmsNote } from "@/lib/smsNotes"
 import type {
-  SendSmsErrorResponse,
   SendSmsStatus,
   SendSmsSuccessResponse,
   UseSendSmsResult,
@@ -23,12 +22,12 @@ function isSendSmsSuccessResponse(value: unknown): value is SendSmsSuccessRespon
 }
 
 function readSendSmsErrorToastMessage(payload: unknown): string {
-  if (
-    isRecord(payload) &&
-    typeof payload.error === "string" &&
-    payload.error.trim().length > 0
-  ) {
-    return (payload as SendSmsErrorResponse).error.trim()
+  if (!isRecord(payload)) {
+    return "SMS failed to send. Check the mobile number."
+  }
+  const err = payload.error
+  if (typeof err === "string" && err.trim().length > 0) {
+    return err.trim()
   }
   return "SMS failed to send. Check the mobile number."
 }
