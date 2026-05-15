@@ -5,11 +5,11 @@ import * as React from "react"
 import { useEvent } from "@/contexts/EventContext"
 import { useToast } from "@/hooks/useToast"
 import { db } from "@/lib/db/powersync"
-import { COLOURS } from "@/lib/constants/colours"
-import { DEVICE_CATEGORIES } from "@/lib/constants/deviceCategories"
 import { INLINE_POWER_SYNC_SAVE_FAILED } from "@/lib/constants/inlineErrors"
 import { TICKET_NUMBER_POOL_MAX, TICKET_NUMBER_POOL_MIN } from "@/lib/constants/ticketPool"
-import type { DropOffBlankEntryFormState, DropOffDeviceRow } from "@/lib/types/dropOffForm"
+import type { DropOffBlankEntryFormState } from "@/lib/types/dropOffForm"
+import { validateDeviceRows } from "@/lib/utils/deviceRowValidation"
+import { expandDbDevicesToFormRows, newEmptyDeviceRow } from "@/lib/utils/expandDeviceRows"
 
 type TicketRow = {
   id: string
@@ -46,36 +46,6 @@ export interface EditPreRegisteredActions {
   setForm: React.Dispatch<React.SetStateAction<DropOffBlankEntryFormState | null>>
   save: () => Promise<void>
   remove: () => Promise<void>
-}
-
-function asInt(v: unknown): number {
-  const n = typeof v === "number" ? v : Number(v)
-  return Number.isFinite(n) ? Math.floor(n) : 0
-}
-
-function toDeviceType(v: string | null): (typeof DEVICE_CATEGORIES)[number] {
-  const s = String(v ?? "Other")
-  if ((DEVICE_CATEGORIES as readonly string[]).includes(s)) {
-    return s as (typeof DEVICE_CATEGORIES)[number]
-  }
-  return "Other"
-}
-
-function toColour(v: string | null): (typeof COLOURS)[number] {
-  const s = String(v ?? "Other")
-  if ((COLOURS as readonly string[]).includes(s)) {
-    return s as (typeof COLOURS)[number]
-  }
-  return "Other"
-}
-
-function newDeviceRow(): DropOffDeviceRow {
-  return {
-    id: crypto.randomUUID(),
-    deviceType: DEVICE_CATEGORIES[0],
-    quantity: 1,
-    colour: COLOURS[0],
-  }
 }
 
 function validateTicketNumberRaw(value: string): number | null {
@@ -134,23 +104,13 @@ export function useEditPreRegisteredPatron(): [EditPreRegisteredState, EditPreRe
           [ticketId]
         )
 
+        const expanded = expandDbDevicesToFormRows(devices)
         const next: DropOffBlankEntryFormState = {
           ticketNumber: String(ticket.ticket_number ?? ""),
           patronName: String(ticket.patron_name ?? ""),
           mobile: String(ticket.mobile ?? ""),
           email: String(ticket.email ?? ""),
-          deviceCountMode: "preset",
-          deviceCountPreset: "1",
-          deviceCountCustom: "",
-          devices:
-            devices.length > 0
-              ? devices.map((d) => ({
-                  id: crypto.randomUUID(),
-                  deviceType: toDeviceType(d.device_type),
-                  quantity: Math.max(1, asInt(d.quantity)),
-                  colour: toColour(d.colour),
-                }))
-              : [newDeviceRow()],
+          devices: expanded.length > 0 ? expanded : [newEmptyDeviceRow()],
           notes: String(note?.content ?? "").trim(),
         }
 
@@ -163,8 +123,6 @@ export function useEditPreRegisteredPatron(): [EditPreRegisteredState, EditPreRe
           setErr(e instanceof Error ? e.message : "Failed to load patron.")
           setForm(null)
         }
-      } finally {
-        // no-op
       }
     })()
 
@@ -178,6 +136,12 @@ export function useEditPreRegisteredPatron(): [EditPreRegisteredState, EditPreRe
     const ticketNumber = validateTicketNumberRaw(form.ticketNumber)
     if (!ticketNumber) {
       toastError(`Ticket number must be ${TICKET_NUMBER_POOL_MIN}–${TICKET_NUMBER_POOL_MAX}.`)
+      return
+    }
+
+    const deviceError = validateDeviceRows(form.devices)
+    if (deviceError) {
+      toastError(deviceError)
       return
     }
 
@@ -208,7 +172,7 @@ export function useEditPreRegisteredPatron(): [EditPreRegisteredState, EditPreRe
         for (const row of form.devices) {
           await tx.execute(
             "INSERT INTO devices (id, ticket_id, device_type, quantity, colour) VALUES (?, ?, ?, ?, ?)",
-            [crypto.randomUUID(), ticketId, row.deviceType, row.quantity, row.colour]
+            [crypto.randomUUID(), ticketId, row.deviceType, 1, row.colour]
           )
         }
 
@@ -262,4 +226,3 @@ export function useEditPreRegisteredPatron(): [EditPreRegisteredState, EditPreRe
     { openFor, close, setForm, save, remove, onOpenChange },
   ]
 }
-

@@ -22,16 +22,14 @@ export interface DeviceRowProps {
   onRemove: () => void
 }
 
-const QUANTITIES = Array.from({ length: 10 }, (_, i) => i + 1)
-
 export function DeviceRow({ value, onChange, onRemove }: DeviceRowProps) {
   return (
     <div className="rounded-lg border border-border bg-background/40 p-3">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_140px_160px_auto] sm:items-end">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_160px_auto] sm:items-end">
         <div className="grid gap-1.5">
           <Label>Device Type</Label>
           <Select
-            value={value.deviceType}
+            value={value.deviceType || undefined}
             onValueChange={(next) =>
               onChange({ ...value, deviceType: next as DeviceCategory })
             }
@@ -50,31 +48,10 @@ export function DeviceRow({ value, onChange, onRemove }: DeviceRowProps) {
         </div>
 
         <div className="grid gap-1.5">
-          <Label>Qty</Label>
-          <Select
-            value={String(value.quantity)}
-            onValueChange={(next) => onChange({ ...value, quantity: Number(next) })}
-          >
-            <SelectTrigger className="min-h-[44px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {QUANTITIES.map((q) => (
-                <SelectItem key={q} value={String(q)}>
-                  {q}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="grid gap-1.5">
           <Label>Colour</Label>
           <Select
-            value={value.colour}
-            onValueChange={(next) =>
-              onChange({ ...value, colour: next as Colour })
-            }
+            value={value.colour || undefined}
+            onValueChange={(next) => onChange({ ...value, colour: next as Colour })}
           >
             <SelectTrigger className="min-h-[44px]">
               <SelectValue placeholder="Select colour" />
@@ -105,4 +82,3 @@ export function DeviceRow({ value, onChange, onRemove }: DeviceRowProps) {
 }
 
 DeviceRow.displayName = "DeviceRow"
-

@@ -21,9 +21,8 @@ import { useSyncStatus } from "@/contexts/SyncStatusContext"
 import { useToast } from "@/hooks/useToast"
 import { usePreRegisteredPatrons } from "@/hooks/usePreRegisteredPatrons"
 import { db } from "@/lib/db/powersync"
-import { COLOURS } from "@/lib/constants/colours"
-import { DEVICE_CATEGORIES } from "@/lib/constants/deviceCategories"
 import type { DropOffBlankEntryFormState } from "@/lib/types/dropOffForm"
+import { expandDbDevicesToFormRows, newEmptyDeviceRow } from "@/lib/utils/expandDeviceRows"
 import { EditPatronSheet, useEditPatronSheetController } from "@/components/park/EditPatronSheet"
 
 type DeviceRow = {
@@ -40,44 +39,13 @@ export interface PreRegisteredListProps {
   onSelect: (prefill: DropOffBlankEntryFormState) => void
 }
 
-function asInt(v: unknown): number {
-  const n = typeof v === "number" ? v : Number(v)
-  return Number.isFinite(n) ? Math.floor(n) : 0
-}
-
-function toDeviceType(v: string | null): (typeof DEVICE_CATEGORIES)[number] {
-  const s = String(v ?? "Other")
-  if ((DEVICE_CATEGORIES as readonly string[]).includes(s)) {
-    return s as (typeof DEVICE_CATEGORIES)[number]
-  }
-  return "Other"
-}
-
-function toColour(v: string | null): (typeof COLOURS)[number] {
-  const s = String(v ?? "Other")
-  if ((COLOURS as readonly string[]).includes(s)) {
-    return s as (typeof COLOURS)[number]
-  }
-  return "Other"
-}
-
 function defaultPrefill(): DropOffBlankEntryFormState {
   return {
     ticketNumber: "",
     patronName: "",
     mobile: "",
     email: "",
-    deviceCountMode: "preset",
-    deviceCountPreset: "1",
-    deviceCountCustom: "",
-    devices: [
-      {
-        id: crypto.randomUUID(),
-        deviceType: DEVICE_CATEGORIES[0],
-        quantity: 1,
-        colour: COLOURS[0],
-      },
-    ],
+    devices: [newEmptyDeviceRow()],
     notes: "",
   }
 }
@@ -123,12 +91,7 @@ export function PreRegisteredList({ onSelect }: PreRegisteredListProps) {
           ...base,
           devices:
             devices.length > 0
-              ? devices.map((d) => ({
-                  id: crypto.randomUUID(),
-                  deviceType: toDeviceType(d.device_type),
-                  quantity: Math.max(1, asInt(d.quantity)),
-                  colour: toColour(d.colour),
-                }))
+              ? expandDbDevicesToFormRows(devices)
               : defaultPrefill().devices,
           notes: String(note?.content ?? "").trim(),
         }
@@ -237,9 +200,6 @@ export function PreRegisteredList({ onSelect }: PreRegisteredListProps) {
                       patronName: p.patronName === "Anonymous" ? "" : p.patronName,
                       mobile: p.mobile ?? "",
                       email: p.email ?? "",
-                      deviceCountMode: "preset",
-                      deviceCountPreset: "1",
-                      deviceCountCustom: "",
                     })
                   }
                 >

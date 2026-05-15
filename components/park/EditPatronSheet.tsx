@@ -19,7 +19,8 @@ import {
 import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Textarea } from "@/components/ui/textarea"
 import { useEditPreRegisteredPatron } from "@/hooks/useEditPreRegisteredPatron"
-import type { DropOffDeviceRow } from "@/lib/types/dropOffForm"
+import { MAX_DEVICES_PER_TICKET } from "@/lib/constants/ticketDevices"
+import { newEmptyDeviceRow } from "@/lib/utils/expandDeviceRows"
 
 export interface EditPatronSheetProps {
   controller?: ReturnType<typeof useEditPreRegisteredPatron>
@@ -31,16 +32,13 @@ export function EditPatronSheet({ controller }: EditPatronSheetProps) {
 
   const form = state.form
 
+  const deviceCount = form?.devices.length ?? 0
+  const atDeviceLimit = deviceCount >= MAX_DEVICES_PER_TICKET
+
   const addDevice = React.useCallback(() => {
     actions.setForm((prev) => {
-      if (!prev) return prev
-      const nextRow: DropOffDeviceRow = {
-        id: crypto.randomUUID(),
-        deviceType: prev.devices[0]?.deviceType ?? "Other",
-        quantity: 1,
-        colour: prev.devices[0]?.colour ?? "Other",
-      }
-      return { ...prev, devices: [...prev.devices, nextRow] }
+      if (!prev || prev.devices.length >= MAX_DEVICES_PER_TICKET) return prev
+      return { ...prev, devices: [...prev.devices, newEmptyDeviceRow()] }
     })
   }, [actions])
 
@@ -122,11 +120,16 @@ export function EditPatronSheet({ controller }: EditPatronSheetProps) {
               variant="outline"
               className="min-h-[44px]"
               onClick={addDevice}
-              disabled={!form || state.isLoading || state.isSaving}
+              disabled={!form || state.isLoading || state.isSaving || atDeviceLimit}
             >
               Add Device
             </Button>
           </div>
+          {atDeviceLimit ? (
+            <p className="text-sm text-muted-foreground">
+              Maximum {MAX_DEVICES_PER_TICKET} devices per patron.
+            </p>
+          ) : null}
 
           <div className="flex flex-col gap-3">
             {(form?.devices ?? []).map((row) => (

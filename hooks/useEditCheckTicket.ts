@@ -92,7 +92,7 @@ export function useEditCheckTicket(): [EditCheckTicketState, EditCheckTicketActi
       return
     }
 
-    const newTotal = Math.floor(Number(form.totalDevices.trim()))
+    const newTotal = form.devices.length
     const nextRemaining = computeDevicesRemainingAfterTotalChange(
       baselineTotal,
       baselineRemaining,
@@ -120,7 +120,7 @@ export function useEditCheckTicket(): [EditCheckTicketState, EditCheckTicketActi
         for (const row of form.devices) {
           await tx.execute(
             "INSERT INTO devices (id, ticket_id, device_type, quantity, colour) VALUES (?, ?, ?, ?, ?)",
-            [crypto.randomUUID(), ticketId, row.deviceType, row.quantity, row.colour]
+            [crypto.randomUUID(), ticketId, row.deviceType, 1, row.colour]
           )
         }
       })

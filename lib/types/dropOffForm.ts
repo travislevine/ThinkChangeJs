@@ -3,9 +3,11 @@ import type { DeviceCategory } from "@/lib/constants/deviceCategories"
 
 export interface DropOffDeviceRow {
   id: string
-  deviceType: DeviceCategory
+  /** Empty string means unselected (placeholder in UI). */
+  deviceType: DeviceCategory | ""
   quantity: number
-  colour: Colour
+  /** Empty string means unselected (placeholder in UI). */
+  colour: Colour | ""
 }
 
 export interface DropOffBlankEntryFormState {
@@ -13,10 +15,6 @@ export interface DropOffBlankEntryFormState {
   patronName: string
   mobile: string
   email: string
-  deviceCountMode: "preset" | "custom"
-  deviceCountPreset: string
-  deviceCountCustom: string
   devices: DropOffDeviceRow[]
   notes: string
 }
-

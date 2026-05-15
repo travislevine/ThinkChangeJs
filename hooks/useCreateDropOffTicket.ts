@@ -19,8 +19,8 @@ function asInt(value: string): number {
   return Math.floor(Number(value))
 }
 
-function sumDevices(state: DropOffBlankEntryFormState): number {
-  return state.devices.reduce((acc, d) => acc + (Number.isFinite(d.quantity) ? d.quantity : 0), 0)
+function countDevices(state: DropOffBlankEntryFormState): number {
+  return state.devices.length
 }
 
 export function useCreateDropOffTicket(): CreateDropOffTicketResult {
@@ -48,7 +48,7 @@ export function useCreateDropOffTicket(): CreateDropOffTicketResult {
         const now = Math.floor(Date.now() / 1000)
         const newTicketId = crypto.randomUUID()
         const deviceId = getOrCreateDeviceUuid()
-        const totalDevices = sumDevices(state)
+        const totalDevices = countDevices(state)
         let usedTicketId = newTicketId
 
         await db.writeTransaction(async (tx) => {
@@ -109,7 +109,7 @@ export function useCreateDropOffTicket(): CreateDropOffTicketResult {
           for (const row of state.devices) {
             await tx.execute(
               "INSERT INTO devices (id, ticket_id, device_type, quantity, colour) VALUES (?, ?, ?, ?, ?)",
-              [crypto.randomUUID(), ticketId, row.deviceType, row.quantity, row.colour]
+              [crypto.randomUUID(), ticketId, row.deviceType, 1, row.colour]
             )
           }
 

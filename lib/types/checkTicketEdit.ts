@@ -5,7 +5,5 @@ export interface CheckTicketEditFormState {
   patronName: string
   mobile: string
   email: string
-  /** Whole-number string for the total device count input. */
-  totalDevices: string
   devices: DropOffDeviceRow[]
 }

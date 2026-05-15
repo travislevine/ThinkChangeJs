@@ -7,18 +7,12 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { COLOURS } from "@/lib/constants/colours"
-import { DEVICE_CATEGORIES } from "@/lib/constants/deviceCategories"
+import { MAX_DEVICES_PER_TICKET } from "@/lib/constants/ticketDevices"
 import { TICKET_NUMBER_POOL_MAX, TICKET_NUMBER_POOL_MIN } from "@/lib/constants/ticketPool"
-import type { DropOffBlankEntryFormState, DropOffDeviceRow } from "@/lib/types/dropOffForm"
+import type { DropOffBlankEntryFormState } from "@/lib/types/dropOffForm"
+import { validateDeviceRows } from "@/lib/utils/deviceRowValidation"
+import { isDeviceRowComplete, newEmptyDeviceRow } from "@/lib/utils/expandDeviceRows"
 import { useCreateDropOffTicket } from "@/hooks/useCreateDropOffTicket"
 import { useTicketNumberAvailability } from "@/hooks/useTicketNumberAvailability"
 
@@ -27,27 +21,13 @@ export interface BlankEntryFormProps {
   initialState?: DropOffBlankEntryFormState
 }
 
-const DEVICE_COUNT_PRESETS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "10+"] as const
-
-function newDeviceRow(): DropOffDeviceRow {
-  return {
-    id: crypto.randomUUID(),
-    deviceType: DEVICE_CATEGORIES[0],
-    quantity: 1,
-    colour: COLOURS[0],
-  }
-}
-
 function defaultState(): DropOffBlankEntryFormState {
   return {
     ticketNumber: "",
     patronName: "",
     mobile: "",
     email: "",
-    deviceCountMode: "preset",
-    deviceCountPreset: "1",
-    deviceCountCustom: "",
-    devices: [newDeviceRow()],
+    devices: [newEmptyDeviceRow()],
     notes: "",
   }
 }
@@ -68,7 +48,6 @@ type BlankEntryErrors = Partial<{
   patronName: string
   mobile: string
   email: string
-  deviceCount: string
   devices: string
 }>
 
@@ -91,7 +70,6 @@ function validateBlankEntry(
 
   const name = state.patronName.trim()
   if (name) {
-    // Letters and spaces only.
     if (!/^[A-Za-z ]+$/.test(name)) {
       errors.patronName = "Use letters A–Z only."
     }
@@ -111,22 +89,14 @@ function validateBlankEntry(
 
   const email = state.email.trim()
   if (email) {
-    // Simple email validation: something@something.something
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       errors.email = "Enter a valid email address."
     }
   }
 
-  if (state.deviceCountMode === "custom") {
-    const digits = normaliseMobileDigits(state.deviceCountCustom)
-    const n = Number(digits)
-    if (!digits || !Number.isFinite(n) || n < 11) {
-      errors.deviceCount = "Enter a number greater than 10."
-    }
-  }
-
-  if (!state.devices.length) {
-    errors.devices = "Add at least one device."
+  const deviceError = validateDeviceRows(state.devices)
+  if (deviceError) {
+    errors.devices = deviceError
   }
 
   return errors
@@ -145,26 +115,18 @@ export function BlankEntryForm({ onTouched, initialState }: BlankEntryFormProps)
     return validateBlankEntry(state, ticketNumberInt, Boolean(ticketNumberInt && ticketAvailability.inUse))
   }, [state, submitAttempted, ticketAvailability.inUse, ticketNumberInt])
 
+  const atDeviceLimit = state.devices.length >= MAX_DEVICES_PER_TICKET
+
   const touched = React.useMemo(() => {
-    const initialDevices = defaultState().devices
-    const initialFirst = initialDevices[0]
+    const defaults = defaultState()
     return (
       state.ticketNumber.trim().length > 0 ||
       state.patronName.trim().length > 0 ||
       state.mobile.trim().length > 0 ||
       state.email.trim().length > 0 ||
-      state.deviceCountPreset !== "1" ||
-      state.deviceCountCustom.trim().length > 0 ||
       state.notes.trim().length > 0 ||
-      state.devices.length !== 1 ||
-      (initialFirst
-        ? state.devices.some(
-            (d) =>
-              d.deviceType !== initialFirst.deviceType ||
-              d.quantity !== initialFirst.quantity ||
-              d.colour !== initialFirst.colour
-          )
-        : state.devices.length > 0)
+      state.devices.length !== defaults.devices.length ||
+      state.devices.some((d) => isDeviceRowComplete(d))
     )
   }, [state])
 
@@ -172,12 +134,17 @@ export function BlankEntryForm({ onTouched, initialState }: BlankEntryFormProps)
     onTouched(touched)
   }, [onTouched, touched])
 
+  React.useEffect(() => {
+    if (initialState) {
+      setState(initialState)
+    }
+  }, [initialState])
+
   const showTicketError = Boolean(errors.ticketNumber)
   const showDuplicateWarning = Boolean(errors.ticketNumberDuplicate)
   const showPatronNameError = Boolean(errors.patronName)
   const showMobileError = Boolean(errors.mobile)
   const showEmailError = Boolean(errors.email)
-  const showDeviceCountError = Boolean(errors.deviceCount)
   const showDevicesError = Boolean(errors.devices)
 
   return (
@@ -247,49 +214,6 @@ export function BlankEntryForm({ onTouched, initialState }: BlankEntryFormProps)
           </div>
         </div>
 
-        <div className="grid gap-1.5">
-          <div className="flex items-center justify-between gap-3">
-            <Label>Number of Devices</Label>
-            <Badge variant="secondary">Required</Badge>
-          </div>
-          <Select
-            value={state.deviceCountPreset}
-            onValueChange={(next) => {
-              setState((s) => ({
-                ...s,
-                deviceCountPreset: next,
-                deviceCountMode: next === "10+" ? "custom" : "preset",
-                deviceCountCustom: next === "10+" ? s.deviceCountCustom : "",
-              }))
-            }}
-          >
-            <SelectTrigger className="min-h-[44px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {DEVICE_COUNT_PRESETS.map((p) => (
-                <SelectItem key={p} value={p}>
-                  {p}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          {state.deviceCountMode === "custom" ? (
-            <Input
-              inputMode="numeric"
-              placeholder="Enter device count"
-              value={state.deviceCountCustom}
-              onChange={(e) => setState((s) => ({ ...s, deviceCountCustom: e.target.value }))}
-              className="min-h-[44px]"
-              aria-invalid={showDeviceCountError}
-            />
-          ) : null}
-          {showDeviceCountError ? (
-            <p className="text-sm text-destructive">{errors.deviceCount}</p>
-          ) : null}
-        </div>
-
         <div className="grid gap-2">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
@@ -300,11 +224,22 @@ export function BlankEntryForm({ onTouched, initialState }: BlankEntryFormProps)
               type="button"
               variant="outline"
               className="min-h-[44px]"
-              onClick={() => setState((s) => ({ ...s, devices: [...s.devices, newDeviceRow()] }))}
+              disabled={atDeviceLimit}
+              onClick={() =>
+                setState((s) => ({
+                  ...s,
+                  devices: [...s.devices, newEmptyDeviceRow()],
+                }))
+              }
             >
               Add Device
             </Button>
           </div>
+          {atDeviceLimit ? (
+            <p className="text-sm text-muted-foreground">
+              Maximum {MAX_DEVICES_PER_TICKET} devices per patron.
+            </p>
+          ) : null}
 
           <div className="flex flex-col gap-3">
             {state.devices.map((row) => (
@@ -386,4 +321,3 @@ export function BlankEntryForm({ onTouched, initialState }: BlankEntryFormProps)
 }
 
 BlankEntryForm.displayName = "BlankEntryForm"
-

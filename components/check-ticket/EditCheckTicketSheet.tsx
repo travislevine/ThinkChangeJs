@@ -10,9 +10,8 @@ import { Label } from "@/components/ui/label"
 import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useEditCheckTicket } from "@/hooks/useEditCheckTicket"
-import { COLOURS } from "@/lib/constants/colours"
-import { DEVICE_CATEGORIES } from "@/lib/constants/deviceCategories"
-import type { DropOffDeviceRow } from "@/lib/types/dropOffForm"
+import { MAX_DEVICES_PER_TICKET } from "@/lib/constants/ticketDevices"
+import { newEmptyDeviceRow } from "@/lib/utils/expandDeviceRows"
 import { formatTicketNumberLabel } from "@/lib/utils/ticketDisplay"
 
 export interface EditCheckTicketSheetProps {
@@ -24,17 +23,13 @@ export function EditCheckTicketSheet({ controller }: EditCheckTicketSheetProps) 
   const [state, actions] = controller ?? fallback
 
   const form = state.form
+  const deviceCount = form?.devices.length ?? 0
+  const atDeviceLimit = deviceCount >= MAX_DEVICES_PER_TICKET
 
   const addDevice = React.useCallback(() => {
     actions.setForm((prev) => {
-      if (!prev) return prev
-      const nextRow: DropOffDeviceRow = {
-        id: crypto.randomUUID(),
-        deviceType: prev.devices[0]?.deviceType ?? DEVICE_CATEGORIES[0],
-        quantity: 1,
-        colour: prev.devices[0]?.colour ?? COLOURS[0],
-      }
-      return { ...prev, devices: [...prev.devices, nextRow] }
+      if (!prev || prev.devices.length >= MAX_DEVICES_PER_TICKET) return prev
+      return { ...prev, devices: [...prev.devices, newEmptyDeviceRow()] }
     })
   }, [actions])
 
@@ -119,34 +114,30 @@ export function EditCheckTicketSheet({ controller }: EditCheckTicketSheetProps) 
                     autoComplete="email"
                   />
                 </div>
-
-                <div className="grid gap-1.5 sm:col-span-2">
-                  <Label htmlFor="check-ticket-edit-total">Total devices</Label>
-                  <Input
-                    id="check-ticket-edit-total"
-                    inputMode="numeric"
-                    className="min-h-[44px]"
-                    value={form.totalDevices}
-                    onChange={(e) =>
-                      actions.setForm((prev) => (prev ? { ...prev, totalDevices: e.target.value } : prev))
-                    }
-                    disabled={state.isSaving}
-                  />
-                </div>
               </div>
 
               <div className="flex items-center justify-between gap-3">
-                <Label>Device rows</Label>
+                <div className="flex flex-col gap-0.5">
+                  <Label>Devices</Label>
+                  <p className="text-sm text-muted-foreground">
+                    {deviceCount} {deviceCount === 1 ? "device" : "devices"}
+                  </p>
+                </div>
                 <Button
                   type="button"
                   variant="outline"
                   className="min-h-[44px]"
                   onClick={addDevice}
-                  disabled={state.isSaving}
+                  disabled={state.isSaving || atDeviceLimit}
                 >
                   Add device
                 </Button>
               </div>
+              {atDeviceLimit ? (
+                <p className="text-sm text-muted-foreground">
+                  Maximum {MAX_DEVICES_PER_TICKET} devices per patron.
+                </p>
+              ) : null}
 
               <div className="flex flex-col gap-3">
                 {form.devices.map((row) => (

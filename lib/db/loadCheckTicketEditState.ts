@@ -1,9 +1,6 @@
-import { COLOURS } from "@/lib/constants/colours"
-import { DEVICE_CATEGORIES } from "@/lib/constants/deviceCategories"
 import { db } from "@/lib/db/powersync"
 import type { CheckTicketEditFormState } from "@/lib/types/checkTicketEdit"
-import type { DropOffDeviceRow } from "@/lib/types/dropOffForm"
-import { sumDeviceRowQuantities } from "@/lib/utils/checkTicketEditValidation"
+import { expandDbDevicesToFormRows, newEmptyDeviceRow } from "@/lib/utils/expandDeviceRows"
 
 type TicketRow = {
   ticket_number: number | string | null
@@ -23,31 +20,6 @@ type DeviceRow = {
 function asInt(v: unknown): number {
   const n = typeof v === "number" ? v : Number(v)
   return Number.isFinite(n) ? Math.floor(n) : 0
-}
-
-function toDeviceType(v: string | null): DropOffDeviceRow["deviceType"] {
-  const s = String(v ?? "Other")
-  if ((DEVICE_CATEGORIES as readonly string[]).includes(s)) {
-    return s as DropOffDeviceRow["deviceType"]
-  }
-  return "Other"
-}
-
-function toColour(v: string | null): DropOffDeviceRow["colour"] {
-  const s = String(v ?? "Other")
-  if ((COLOURS as readonly string[]).includes(s)) {
-    return s as DropOffDeviceRow["colour"]
-  }
-  return "Other"
-}
-
-function newDeviceRow(): DropOffDeviceRow {
-  return {
-    id: crypto.randomUUID(),
-    deviceType: DEVICE_CATEGORIES[0],
-    quantity: 1,
-    colour: COLOURS[0],
-  }
 }
 
 export type LoadCheckTicketEditStateOk = {
@@ -84,23 +56,13 @@ export async function loadCheckTicketEditState(
     const dbTotal = Math.max(0, asInt(ticket.total_devices))
     const remaining = Math.max(0, asInt(ticket.devices_remaining))
 
-    const deviceRows: DropOffDeviceRow[] =
-      devices.length > 0
-        ? devices.map((d) => ({
-            id: crypto.randomUUID(),
-            deviceType: toDeviceType(d.device_type),
-            quantity: Math.max(1, asInt(d.quantity)),
-            colour: toColour(d.colour),
-          }))
-        : [newDeviceRow()]
-    const rowSum = sumDeviceRowQuantities(deviceRows)
-    const displayTotal = dbTotal > 0 ? dbTotal : Math.max(1, rowSum)
+    const expanded = expandDbDevicesToFormRows(devices)
+    const deviceRows = expanded.length > 0 ? expanded : [newEmptyDeviceRow()]
 
     const form: CheckTicketEditFormState = {
       patronName: String(ticket.patron_name ?? ""),
       mobile: String(ticket.mobile ?? ""),
       email: String(ticket.email ?? ""),
-      totalDevices: String(displayTotal),
       devices: deviceRows,
     }
 
