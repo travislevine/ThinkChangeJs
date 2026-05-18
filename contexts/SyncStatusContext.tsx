@@ -47,6 +47,10 @@ function readNavigatorOnline(): boolean {
 }
 
 async function probeConnectivity(signal: AbortSignal): Promise<boolean> {
+  if (!navigator.onLine) {
+    return false
+  }
+
   const controller = new AbortController()
   const timeout = window.setTimeout(() => controller.abort(), CONNECTIVITY_PROBE_TIMEOUT_MS)
 

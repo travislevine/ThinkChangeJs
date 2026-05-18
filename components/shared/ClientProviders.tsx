@@ -8,10 +8,14 @@ import { AuthGuard } from "@/components/shared/AuthGuard"
 import { PowerSyncProvider } from "@/components/shared/PowerSyncProvider"
 import { ThemeProvider } from "@/components/shared/ThemeProvider"
 import { UpdatePrompt } from "@/components/shared/UpdatePrompt"
+import { OfflineRouteWarmer } from "@/components/shared/OfflineRouteWarmer"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { EventProvider } from "@/contexts/EventContext"
 import { SyncStatusProvider } from "@/contexts/SyncStatusContext"
 import { PinAuthProvider } from "@/hooks/usePinAuth"
+
+/** When `NEXT_PUBLIC_SERWIST_IN_DEV=1`, keep Serwist + SW in `next dev` for offline cache tests (run `npm run build` first so `public/sw.js` matches the app). */
+const SERWIST_IN_DEV = process.env.NEXT_PUBLIC_SERWIST_IN_DEV === "1"
 
 export interface ClientProvidersProps {
   children: ReactNode
@@ -22,6 +26,7 @@ export interface ClientProvidersProps {
 function DevServiceWorkerCleanup() {
   React.useEffect(() => {
     if (process.env.NODE_ENV !== "development") return
+    if (SERWIST_IN_DEV) return
     if (!("serviceWorker" in navigator)) return
 
     void (async () => {
@@ -61,7 +66,10 @@ function DevUnhandledRejectionLogger() {
 
 export function ClientProviders({ children, toast }: ClientProvidersProps) {
   return (
-    <SerwistProvider swUrl="/sw.js" disable={process.env.NODE_ENV === "development"}>
+    <SerwistProvider
+      swUrl="/sw.js"
+      disable={process.env.NODE_ENV === "development" && !SERWIST_IN_DEV}
+    >
       <ThemeProvider>
         <TooltipProvider delayDuration={300}>
           <PowerSyncProvider>
@@ -72,6 +80,7 @@ export function ClientProviders({ children, toast }: ClientProvidersProps) {
                     <DevServiceWorkerCleanup />
                     <DevUnhandledRejectionLogger />
                     <UpdatePrompt />
+                    <OfflineRouteWarmer />
                     {children}
                   </AuthGuard>
                 </PinAuthProvider>

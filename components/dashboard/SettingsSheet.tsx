@@ -1,15 +1,18 @@
 "use client"
 
 import * as React from "react"
+import { Loader2Icon } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useRouter } from "next/navigation"
 
+import { ExportEventSelector } from "@/components/dashboard/ExportEventSelector"
 import { NewEventDialog } from "@/components/dashboard/NewEventDialog"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { Switch } from "@/components/ui/switch"
 import { useEvent } from "@/contexts/EventContext"
+import { useExportCsv } from "@/hooks/useExportCsv"
 import { usePinAuth } from "@/hooks/usePinAuth"
 
 export interface SettingsSheetProps {
@@ -30,8 +33,18 @@ export function SettingsSheet({ trigger }: SettingsSheetProps) {
 
   const [open, setOpen] = React.useState(false)
   const [newEventOpen, setNewEventOpen] = React.useState(false)
+  const [selectedEventId, setSelectedEventId] = React.useState("")
+  const [selectedEventName, setSelectedEventName] = React.useState("")
+
+  const handleExportEventChange = React.useCallback((eventId: string, eventName: string) => {
+    setSelectedEventId(eventId)
+    setSelectedEventName(eventName)
+  }, [])
+
+  const { triggerExport, isExporting } = useExportCsv(selectedEventId, selectedEventName)
 
   const isDark = theme === "dark" || (!theme && typeof window !== "undefined")
+  const exportDisabled = !selectedEventId.trim() || isExporting
 
   return (
     <>
@@ -43,6 +56,29 @@ export function SettingsSheet({ trigger }: SettingsSheetProps) {
           </SheetHeader>
 
           <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">
+            <div className="flex flex-col gap-3 rounded-md border border-border px-3 py-3">
+              <span className="text-sm font-medium">Data Export</span>
+              <ExportEventSelector onEventChange={handleExportEventChange} />
+              <Button
+                type="button"
+                variant="default"
+                className="min-h-[44px] w-full gap-2"
+                disabled={exportDisabled}
+                onClick={() => void triggerExport()}
+              >
+                {isExporting ? (
+                  <>
+                    <Loader2Icon className="h-5 w-5 shrink-0 animate-spin" aria-hidden />
+                    Exporting…
+                  </>
+                ) : (
+                  "Export CSV"
+                )}
+              </Button>
+            </div>
+
+            <Separator />
+
             <div className="flex items-center justify-between gap-4 rounded-md border border-border px-3 py-3">
               <div className="flex flex-col">
                 <span className="text-sm font-medium">Dark Mode</span>

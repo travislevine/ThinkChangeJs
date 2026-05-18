@@ -13,6 +13,10 @@ export const metadata: Metadata = {
   title: "BikePark",
   description: "Offline-first bike park ticketing",
   manifest: "/manifest.json",
+  icons: {
+    icon: [{ url: "/pwa-icon.svg", type: "image/svg+xml" }],
+    apple: "/pwa-icon.svg",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
