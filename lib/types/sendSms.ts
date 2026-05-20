@@ -1,13 +1,22 @@
 export type SendSmsStatus = "idle" | "sending" | "sent" | "error"
 
-export type SmsMessageVariant = "ready_for_collection" | "checked_in"
+export type SmsMessageVariant = "ready_for_collection" | "checked_in" | "pickup"
+
+/** Device type → quantity picked up in a single pick-up event. */
+export type SmsPicksByType = Record<string, number>
 
 export interface SendSmsOptions {
   variant?: SmsMessageVariant
   ticketId?: string
   /** Unix seconds — required when variant is `checked_in`. */
   checkedInAt?: number
-  /** When true, skips Send SMS button state (drop-off auto-send). */
+  /** Unix seconds — required when variant is `pickup`. */
+  pickedUpAt?: number
+  /** Required when variant is `pickup`. */
+  picksByType?: SmsPicksByType
+  /** When true with `pickup`, appends the rating survey link. */
+  allDevicesPickedUp?: boolean
+  /** When true, skips Send SMS button state (auto-send). */
   silent?: boolean
 }
 
@@ -28,6 +37,10 @@ export interface SendSmsRequest {
   variant?: SmsMessageVariant
   /** Unix seconds — required when variant is `checked_in`. */
   checkedInAt?: number
+  /** Unix seconds — required when variant is `pickup`. */
+  pickedUpAt?: number
+  picksByType?: SmsPicksByType
+  allDevicesPickedUp?: boolean
 }
 
 export interface SendSmsSuccessResponse {

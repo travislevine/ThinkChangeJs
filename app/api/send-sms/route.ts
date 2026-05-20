@@ -8,12 +8,32 @@ import type {
   SendSmsRequest,
   SendSmsSuccessResponse,
   SmsMessageVariant,
+  SmsPicksByType,
 } from "@/lib/types/sendSms"
 import { buildSmsMessageBody } from "@/lib/utils/smsMessageBody"
 import { sanitizeSmsToE164 } from "@/lib/utils/sanitizeSmsTo"
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+function parsePicksByType(body: Record<string, unknown>): SmsPicksByType | undefined {
+  const raw = body.picksByType
+  if (raw === undefined) {
+    return undefined
+  }
+  if (!isRecord(raw)) {
+    return undefined
+  }
+
+  const picks: SmsPicksByType = {}
+  for (const [deviceType, qty] of Object.entries(raw)) {
+    if (typeof qty !== "number" || !Number.isFinite(qty)) {
+      return undefined
+    }
+    picks[deviceType] = Math.floor(qty)
+  }
+  return picks
 }
 
 function parseSendSmsRequest(
@@ -60,7 +80,11 @@ function parseSendSmsRequest(
 
   let variant: SmsMessageVariant = "ready_for_collection"
   if (body.variant !== undefined) {
-    if (body.variant !== "ready_for_collection" && body.variant !== "checked_in") {
+    if (
+      body.variant !== "ready_for_collection" &&
+      body.variant !== "checked_in" &&
+      body.variant !== "pickup"
+    ) {
       const payload: SendSmsErrorResponse = { error: "Invalid request body" }
       return { ok: false, response: NextResponse.json(payload, { status: 400 }) }
     }
@@ -76,9 +100,44 @@ function parseSendSmsRequest(
     checkedInAt = Math.floor(body.checkedInAt)
   }
 
+  let pickedUpAt: number | undefined
+  if (body.pickedUpAt !== undefined) {
+    if (typeof body.pickedUpAt !== "number" || !Number.isFinite(body.pickedUpAt)) {
+      const payload: SendSmsErrorResponse = { error: "Invalid request body" }
+      return { ok: false, response: NextResponse.json(payload, { status: 400 }) }
+    }
+    pickedUpAt = Math.floor(body.pickedUpAt)
+  }
+
+  const picksByType = parsePicksByType(body)
+  if (body.picksByType !== undefined && picksByType === undefined) {
+    const payload: SendSmsErrorResponse = { error: "Invalid request body" }
+    return { ok: false, response: NextResponse.json(payload, { status: 400 }) }
+  }
+
+  let allDevicesPickedUp = false
+  if (body.allDevicesPickedUp !== undefined) {
+    if (typeof body.allDevicesPickedUp !== "boolean") {
+      const payload: SendSmsErrorResponse = { error: "Invalid request body" }
+      return { ok: false, response: NextResponse.json(payload, { status: 400 }) }
+    }
+    allDevicesPickedUp = body.allDevicesPickedUp
+  }
+
   if (variant === "checked_in" && checkedInAt === undefined) {
     const payload: SendSmsErrorResponse = { error: "Check-in time is required" }
     return { ok: false, response: NextResponse.json(payload, { status: 400 }) }
+  }
+
+  if (variant === "pickup") {
+    if (pickedUpAt === undefined) {
+      const payload: SendSmsErrorResponse = { error: "Pick-up time is required" }
+      return { ok: false, response: NextResponse.json(payload, { status: 400 }) }
+    }
+    if (!picksByType || Object.values(picksByType).every((q) => q <= 0)) {
+      const payload: SendSmsErrorResponse = { error: "Pick-up devices are required" }
+      return { ok: false, response: NextResponse.json(payload, { status: 400 }) }
+    }
   }
 
   return {
@@ -89,6 +148,9 @@ function parseSendSmsRequest(
       patronName,
       variant,
       checkedInAt,
+      pickedUpAt,
+      picksByType,
+      allDevicesPickedUp,
     },
   }
 }
@@ -128,12 +190,16 @@ export async function POST(request: Request): Promise<NextResponse> {
     return NextResponse.json(payload, { status: 500 })
   }
 
-  const messageBody = buildSmsMessageBody(
-    parsedBody.value.variant ?? "ready_for_collection",
-    parsedBody.value.ticketNumber,
-    parsedBody.value.patronName,
-    parsedBody.value.checkedInAt,
-  )
+  const req = parsedBody.value
+  const messageBody = buildSmsMessageBody({
+    variant: req.variant ?? "ready_for_collection",
+    ticketNumber: req.ticketNumber,
+    patronName: req.patronName,
+    checkedInAtSeconds: req.checkedInAt,
+    pickedUpAtSeconds: req.pickedUpAt,
+    picksByType: req.picksByType,
+    allDevicesPickedUp: req.allDevicesPickedUp,
+  })
   const client = twilio(accountSid, authToken)
 
   try {

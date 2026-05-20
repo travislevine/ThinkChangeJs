@@ -68,6 +68,9 @@ export function useSendSms(ticketId: string): UseSendSmsResult {
       const resolvedTicketId = options?.ticketId ?? ticketId
       const variant = options?.variant ?? "ready_for_collection"
       const checkedInAt = options?.checkedInAt
+      const pickedUpAt = options?.pickedUpAt
+      const picksByType = options?.picksByType
+      const allDevicesPickedUp = options?.allDevicesPickedUp
       const silent = options?.silent === true
 
       if (!eventId) {
@@ -98,7 +101,16 @@ export function useSendSms(ticketId: string): UseSendSmsResult {
         const response = await fetch("/api/send-sms", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ to, ticketNumber, patronName, variant, checkedInAt }),
+          body: JSON.stringify({
+            to,
+            ticketNumber,
+            patronName,
+            variant,
+            checkedInAt,
+            pickedUpAt,
+            picksByType,
+            allDevicesPickedUp,
+          }),
         })
 
         const payload: unknown = await response.json().catch(() => null)

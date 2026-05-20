@@ -19,6 +19,7 @@ import { useEvent } from "@/contexts/EventContext"
 import { inlineMessageForPickupWrite } from "@/lib/constants/inlineErrors"
 import { useCompletePickup } from "@/hooks/useCompletePickup"
 import { usePickupTicketPickupDetail } from "@/hooks/usePickupTicketPickupDetail"
+import { useSchedulePickupSms } from "@/hooks/useSchedulePickupSms"
 import { useToast } from "@/hooks/useToast"
 import { formatPickupDeviceBreakdown } from "@/lib/utils/formatPickupDeviceBreakdown"
 import { formatTicketNumberLabel } from "@/lib/utils/ticketDisplay"
@@ -47,6 +48,7 @@ export function PickupTicketPickupDialog({
 }: PickupTicketPickupDialogProps) {
   const { currentEvent } = useEvent()
   const { complete, isSubmitting } = useCompletePickup()
+  const { schedulePickupSms } = useSchedulePickupSms()
   const { success } = useToast()
 
   const ticketId = ticket?.ticketId ?? null
@@ -95,6 +97,27 @@ export function PickupTicketPickupDialog({
         picksByType: pickQuantities,
       })
 
+      const mobile = ticket.mobile?.trim() ?? ""
+      if (mobile) {
+        const patronName = ticket.patronName.trim() ? ticket.patronName.trim() : null
+        const picksForSms: Record<string, number> = {}
+        for (const [deviceType, qty] of Object.entries(pickQuantities)) {
+          const n = Math.max(0, Math.floor(Number(qty)))
+          if (n > 0) {
+            picksForSms[deviceType] = n
+          }
+        }
+        schedulePickupSms({
+          ticketId: ticket.ticketId,
+          mobile,
+          ticketNumber: ticket.ticketNumber,
+          patronName,
+          pickedUpAt: ok.pickedUpAt,
+          picksByType: picksForSms,
+          allDevicesPickedUp: ok.newRemaining === 0,
+        })
+      }
+
       if (ok.newRemaining === 0) {
         onFullyCheckedOut(ticket.ticketNumber)
       } else {
@@ -113,6 +136,7 @@ export function PickupTicketPickupDialog({
     onFullyCheckedOut,
     onOpenChange,
     pickQuantities,
+    schedulePickupSms,
     success,
     ticket,
     verified,

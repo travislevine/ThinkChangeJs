@@ -15,6 +15,7 @@ export interface CompletePickupParams {
 export interface CompletePickupOk {
   newRemaining: number
   totalPickedThisEvent: number
+  pickedUpAt: number
 }
 
 export interface UseCompletePickupResult {
@@ -171,7 +172,7 @@ export function useCompletePickup(): UseCompletePickupResult {
           ])
         }
 
-        return { newRemaining, totalPickedThisEvent: totalPick }
+        return { newRemaining, totalPickedThisEvent: totalPick, pickedUpAt: now }
       })
 
       return result

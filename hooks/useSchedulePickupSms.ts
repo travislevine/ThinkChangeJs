@@ -6,17 +6,20 @@ import { useSendSms } from "@/hooks/useSendSms"
 import { useToast } from "@/hooks/useToast"
 import { AUTO_PATRON_SMS_DELAY_MS } from "@/lib/constants/sms"
 import { TOAST_DURATION_SMS_MS } from "@/lib/constants/toastDurations"
+import type { SmsPicksByType } from "@/lib/types/sendSms"
 
-export interface ScheduleDropOffCheckedInSmsParams {
+export interface SchedulePickupSmsParams {
   ticketId: string
   mobile: string
   ticketNumber: number
   patronName: string | null
-  checkedInAt: number
+  pickedUpAt: number
+  picksByType: SmsPicksByType
+  allDevicesPickedUp: boolean
 }
 
-export interface UseScheduleDropOffCheckedInSmsResult {
-  scheduleCheckedInSms: (params: ScheduleDropOffCheckedInSmsParams) => void
+export interface UseSchedulePickupSmsResult {
+  schedulePickupSms: (params: SchedulePickupSmsParams) => void
   cancelScheduledSms: () => void
 }
 
@@ -24,7 +27,7 @@ function readNavigatorOnline(): boolean {
   return typeof navigator !== "undefined" && navigator.onLine
 }
 
-export function useScheduleDropOffCheckedInSms(): UseScheduleDropOffCheckedInSmsResult {
+export function useSchedulePickupSms(): UseSchedulePickupSmsResult {
   const { sendSms } = useSendSms("")
   const { error: toastError } = useToast()
   const delayRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -46,15 +49,15 @@ export function useScheduleDropOffCheckedInSms(): UseScheduleDropOffCheckedInSms
     }
   }, [cancelScheduledSms])
 
-  const scheduleCheckedInSms = React.useCallback(
-    (params: ScheduleDropOffCheckedInSmsParams) => {
+  const schedulePickupSms = React.useCallback(
+    (params: SchedulePickupSmsParams) => {
       const mobile = params.mobile.trim()
       if (!mobile) {
         return
       }
       if (!readNavigatorOnline()) {
         toastError(
-          "Checked-in SMS was not scheduled — no internet connection.",
+          "Pick-up SMS was not scheduled — no internet connection.",
           smsToastOptions
         )
         return
@@ -65,9 +68,11 @@ export function useScheduleDropOffCheckedInSms(): UseScheduleDropOffCheckedInSms
       delayRef.current = setTimeout(() => {
         delayRef.current = null
         void sendSms(mobile, params.ticketNumber, params.patronName, {
-          variant: "checked_in",
+          variant: "pickup",
           ticketId: params.ticketId,
-          checkedInAt: params.checkedInAt,
+          pickedUpAt: params.pickedUpAt,
+          picksByType: params.picksByType,
+          allDevicesPickedUp: params.allDevicesPickedUp,
           silent: true,
         })
       }, AUTO_PATRON_SMS_DELAY_MS)
@@ -75,5 +80,5 @@ export function useScheduleDropOffCheckedInSms(): UseScheduleDropOffCheckedInSms
     [cancelScheduledSms, sendSms, smsToastOptions, toastError]
   )
 
-  return { scheduleCheckedInSms, cancelScheduledSms }
+  return { schedulePickupSms, cancelScheduledSms }
 }
