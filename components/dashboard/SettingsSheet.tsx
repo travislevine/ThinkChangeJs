@@ -6,6 +6,7 @@ import { useTheme } from "next-themes"
 import { useRouter } from "next/navigation"
 
 import { ExportEventSelector } from "@/components/dashboard/ExportEventSelector"
+import { ExportPinDialog } from "@/components/dashboard/ExportPinDialog"
 import { NewEventDialog } from "@/components/dashboard/NewEventDialog"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
@@ -32,6 +33,7 @@ export function SettingsSheet({ trigger }: SettingsSheetProps) {
   const { lock } = usePinAuth()
 
   const [open, setOpen] = React.useState(false)
+  const [exportPinOpen, setExportPinOpen] = React.useState(false)
   const [newEventOpen, setNewEventOpen] = React.useState(false)
   const [selectedEventId, setSelectedEventId] = React.useState("")
   const [selectedEventName, setSelectedEventName] = React.useState("")
@@ -64,7 +66,7 @@ export function SettingsSheet({ trigger }: SettingsSheetProps) {
                 variant="default"
                 className="min-h-[44px] w-full gap-2"
                 disabled={exportDisabled}
-                onClick={() => void triggerExport()}
+                onClick={() => setExportPinOpen(true)}
               >
                 {isExporting ? (
                   <>
@@ -133,6 +135,12 @@ export function SettingsSheet({ trigger }: SettingsSheetProps) {
           </div>
         </SheetContent>
       </Sheet>
+
+      <ExportPinDialog
+        open={exportPinOpen}
+        onOpenChange={setExportPinOpen}
+        onVerified={() => triggerExport()}
+      />
 
       <NewEventDialog open={newEventOpen} onOpenChange={setNewEventOpen} />
     </>
