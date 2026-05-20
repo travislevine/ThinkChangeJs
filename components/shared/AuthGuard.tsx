@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { Skeleton } from "@/components/ui/skeleton"
 import { SyncFailureBanner } from "@/components/shared/SyncFailureBanner"
 import { usePinAuth } from "@/hooks/usePinAuth"
+import { operatorReplace } from "@/hooks/useOperatorNavigate"
 
 export interface AuthGuardProps {
   children: React.ReactNode
@@ -20,7 +21,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
     if (!ready) return
     if (!isAuthorised && pathname !== "/pin") {
       const next = encodeURIComponent(pathname || "/")
-      router.replace(`/pin?next=${next}`)
+      operatorReplace(router, `/pin?next=${next}`)
     }
   }, [ready, isAuthorised, pathname, router])
 

@@ -1,10 +1,10 @@
 "use client"
 
 import * as React from "react"
-import Link from "next/link"
 import { Settings } from "lucide-react"
 
 import { SettingsSheet } from "@/components/dashboard/SettingsSheet"
+import { OperatorLink } from "@/components/shared/OperatorLink"
 import { SyncStatusIndicator } from "@/components/dashboard/SyncStatusIndicator"
 import { Button } from "@/components/ui/button"
 
@@ -24,10 +24,10 @@ export function DashboardHeader() {
       <div className="flex w-full flex-col gap-3 md:w-auto md:min-w-[420px]">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Button asChild size="lg" className="min-h-[44px] w-full">
-            <Link href="/park">Drop-Off</Link>
+            <OperatorLink href="/park">Drop-Off</OperatorLink>
           </Button>
           <Button asChild size="lg" variant="outline" className="min-h-[44px] w-full">
-            <Link href="/pickup">Pick Up</Link>
+            <OperatorLink href="/pickup">Pick Up</OperatorLink>
           </Button>
         </div>
 

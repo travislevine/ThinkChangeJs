@@ -14,6 +14,7 @@ import { useSyncStatus } from "@/contexts/SyncStatusContext"
 import { CHECK_TICKET_SORT_MODE } from "@/lib/constants/checkTicket"
 import type { CheckTicketSortMode } from "@/lib/constants/checkTicket"
 import { TICKET_STATUS_COMPLETED } from "@/lib/constants/ticketStatus"
+import { operatorNavigate } from "@/hooks/useOperatorNavigate"
 import { useCheckTicketRecordDetails } from "@/hooks/useCheckTicketRecordDetails"
 import { useAddCheckTicketNote } from "@/hooks/useAddCheckTicketNote"
 import { useCheckTicketTickets } from "@/hooks/useCheckTicketTickets"
@@ -76,7 +77,7 @@ export default function CheckTicketPage() {
   )
 
   const onBack = React.useCallback(() => {
-    router.push("/")
+    operatorNavigate(router, "/")
   }, [router])
 
   const onRefresh = React.useCallback(async () => {

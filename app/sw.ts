@@ -1,7 +1,7 @@
 /// <reference lib="esnext" />
 /// <reference lib="webworker" />
 
-import { defaultCache } from "@serwist/next/worker"
+import { defaultCache, PAGES_CACHE_NAME } from "@serwist/next/worker"
 import type { PrecacheEntry, SerwistGlobalConfig } from "serwist"
 import {
   CacheFirst,
@@ -21,7 +21,7 @@ declare const self: ServiceWorkerGlobalScope
 
 const OPERATOR_DOCUMENT_PATHS = ["/", "/park", "/pickup", "/pin", "/check-ticket"] as const
 
-const RSC_CACHE = "pages-rsc"
+const PAGE_CACHE_MAX_AGE_SECONDS = 7 * 24 * 60 * 60
 
 /** Avoid `no-response` rejections when the connectivity probe runs offline. */
 class OfflineAwarePing extends Strategy {
@@ -56,12 +56,43 @@ const serwist = new Serwist({
       handler: new OfflineAwarePing(),
     },
     {
+      matcher: /\/_next\/static.+\.wasm$/i,
+      handler: new CacheFirst({
+        cacheName: "next-static-wasm-assets",
+        plugins: [
+          new ExpirationPlugin({
+            maxEntries: 8,
+            maxAgeSeconds: PAGE_CACHE_MAX_AGE_SECONDS,
+          }),
+        ],
+      }),
+    },
+    {
+      matcher: ({ request, url: { pathname }, sameOrigin }) =>
+        request.mode === "navigate" && sameOrigin && !pathname.startsWith("/api/"),
+      handler: new CacheFirst({
+        cacheName: PAGES_CACHE_NAME.html,
+        matchOptions: { ignoreSearch: true },
+        plugins: [
+          new ExpirationPlugin({
+            maxEntries: 32,
+            maxAgeSeconds: PAGE_CACHE_MAX_AGE_SECONDS,
+          }),
+        ],
+      }),
+    },
+    {
       matcher: ({ request, url: { pathname }, sameOrigin }) =>
         request.headers.get("RSC") === "1" && sameOrigin && !pathname.startsWith("/api/"),
       handler: new CacheFirst({
-        cacheName: RSC_CACHE,
+        cacheName: PAGES_CACHE_NAME.rsc,
         matchOptions: { ignoreSearch: true },
-        plugins: [new ExpirationPlugin({ maxEntries: 64, maxAgeSeconds: 7 * 24 * 60 * 60 })],
+        plugins: [
+          new ExpirationPlugin({
+            maxEntries: 64,
+            maxAgeSeconds: PAGE_CACHE_MAX_AGE_SECONDS,
+          }),
+        ],
       }),
     },
     ...defaultCache,

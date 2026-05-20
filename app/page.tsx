@@ -1,7 +1,5 @@
 "use client"
 
-import Link from "next/link"
-
 import {
   DASHBOARD_ACCENT_BUTTON_CLASS,
   DASHBOARD_ACCENT_CARD_CLASS,
@@ -9,6 +7,7 @@ import {
   DASHBOARD_FOOTER_BORDER_CLASS,
 } from "@/components/dashboard/dashboardSurfaceStyles"
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader"
+import { OperatorLink } from "@/components/shared/OperatorLink"
 import { StatsSection } from "@/components/dashboard/StatsSection"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -30,7 +29,7 @@ export default function Home() {
                 </CardHeader>
                 <CardContent className="flex flex-col gap-3">
                   <Button asChild size="lg" variant="ghost" className={DASHBOARD_ACCENT_BUTTON_CLASS}>
-                    <Link href="/pin">PIN entry</Link>
+                    <OperatorLink href="/pin">PIN entry</OperatorLink>
                   </Button>
                 </CardContent>
               </Card>
@@ -40,7 +39,7 @@ export default function Home() {
 
         <footer className={DASHBOARD_FOOTER_BORDER_CLASS}>
           <Button asChild size="lg" variant="secondary" className="min-h-[44px] w-full">
-            <Link href="/check-ticket">Check Ticket</Link>
+            <OperatorLink href="/check-ticket">Check Ticket</OperatorLink>
           </Button>
         </footer>
       </div>

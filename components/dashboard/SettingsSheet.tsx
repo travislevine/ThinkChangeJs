@@ -13,6 +13,7 @@ import { Separator } from "@/components/ui/separator"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { Switch } from "@/components/ui/switch"
 import { useEvent } from "@/contexts/EventContext"
+import { operatorNavigate } from "@/hooks/useOperatorNavigate"
 import { useExportCsv } from "@/hooks/useExportCsv"
 import { usePinAuth } from "@/hooks/usePinAuth"
 
@@ -126,7 +127,7 @@ export function SettingsSheet({ trigger }: SettingsSheetProps) {
                 onClick={() => {
                   lock()
                   setOpen(false)
-                  router.push("/pin")
+                  operatorNavigate(router, "/pin")
                 }}
               >
                 Lock App

@@ -5,8 +5,44 @@ import { useRouter } from "next/navigation"
 
 import { OPERATOR_ROUTES } from "@/lib/constants/operatorRoutes"
 
+function cacheUrlWithSerwist(path: string): void {
+  if (typeof window === "undefined" || !window.serwist?.messageSW) {
+    return
+  }
+
+  void window.serwist.messageSW({
+    type: "CACHE_URLS",
+    payload: { urlsToCache: [path] },
+  })
+}
+
+function warmRoute(path: string, router: ReturnType<typeof useRouter>): void {
+  try {
+    router.prefetch(path)
+  } catch {
+    // Prefetch is best-effort.
+  }
+
+  void fetch(path, {
+    credentials: "same-origin",
+    headers: {
+      RSC: "1",
+      Accept: "text/x-component",
+    },
+  }).catch(() => undefined)
+
+  void fetch(path, {
+    credentials: "same-origin",
+    headers: {
+      Accept: "text/html,application/xhtml+xml",
+    },
+  }).catch(() => undefined)
+
+  cacheUrlWithSerwist(path)
+}
+
 /**
- * While online, prefetch each operator route so Serwist caches RSC payloads for offline navigation.
+ * While online, prefetch each operator route so Serwist caches HTML + RSC payloads for offline navigation.
  * Visit every page once after deploy, or rely on this warmer on the dashboard boot path.
  */
 export function OfflineRouteWarmer(): null {
@@ -20,19 +56,7 @@ export function OfflineRouteWarmer(): null {
 
       for (const path of OPERATOR_ROUTES) {
         if (path === "/") continue
-        try {
-          router.prefetch(path)
-        } catch {
-          // Prefetch is best-effort.
-        }
-
-        void fetch(path, {
-          credentials: "same-origin",
-          headers: {
-            RSC: "1",
-            Accept: "text/x-component",
-          },
-        }).catch(() => undefined)
+        warmRoute(path, router)
       }
     }
 

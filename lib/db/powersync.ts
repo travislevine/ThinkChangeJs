@@ -1,8 +1,15 @@
 import "@/lib/polyfills/insecureContextClient"
-import { PowerSyncDatabase } from "@powersync/web"
+import {
+  PowerSyncDatabase,
+  WASQLiteOpenFactory,
+  WASQLiteVFS,
+} from "@powersync/web"
 
 import { bikeParkSchema } from "@/lib/db/schema"
 import { createBikeParkConnector } from "@/lib/db/sync"
+import { isAppleWebKit } from "@/lib/platform/isAppleWebKit"
+
+const DB_FILENAME = "bikepark.db"
 
 function isInsecureContext(): boolean {
   if (typeof window === "undefined") return false
@@ -10,22 +17,72 @@ function isInsecureContext(): boolean {
   return window.isSecureContext !== true
 }
 
-export const db = new PowerSyncDatabase({
-  schema: bikeParkSchema,
-  database: {
-    dbFilename: "bikepark.db",
-  },
-  ...(isInsecureContext()
-    ? {
-        // In insecure contexts, `navigator.locks` is missing in workers on some browsers.
-        // Keep DB work on the main thread where our polyfills apply.
+function supportsOpfs(): boolean {
+  return (
+    typeof navigator !== "undefined" &&
+    "storage" in navigator &&
+    typeof navigator.storage.getDirectory === "function"
+  )
+}
+
+function createPowerSyncDatabase(): PowerSyncDatabase {
+  const insecure = isInsecureContext()
+  const appleWebKit =
+    typeof window !== "undefined" && isAppleWebKit() && !insecure
+
+  if (appleWebKit && supportsOpfs()) {
+    const enableMultiTabs = typeof SharedWorker !== "undefined"
+    return new PowerSyncDatabase({
+      schema: bikeParkSchema,
+      database: new WASQLiteOpenFactory({
+        dbFilename: DB_FILENAME,
+        vfs: WASQLiteVFS.OPFSCoopSyncVFS,
         flags: {
-          useWebWorker: false,
-          enableMultiTabs: false,
+          enableMultiTabs,
         },
-      }
-    : {}),
-})
+      }),
+      flags: {
+        enableMultiTabs,
+      },
+    })
+  }
+
+  if (appleWebKit) {
+    return new PowerSyncDatabase({
+      schema: bikeParkSchema,
+      database: {
+        dbFilename: DB_FILENAME,
+      },
+      flags: {
+        useWebWorker: false,
+        enableMultiTabs: false,
+      },
+    })
+  }
+
+  if (insecure) {
+    return new PowerSyncDatabase({
+      schema: bikeParkSchema,
+      database: {
+        dbFilename: DB_FILENAME,
+      },
+      flags: {
+        // In insecure contexts, `navigator.locks` is missing in workers on some browsers.
+        useWebWorker: false,
+        enableMultiTabs: false,
+      },
+    })
+  }
+
+  return new PowerSyncDatabase({
+    schema: bikeParkSchema,
+    database: {
+      dbFilename: DB_FILENAME,
+    },
+  })
+}
+
+export const db = createPowerSyncDatabase()
 
 let initPromise: Promise<void> | null = null
 

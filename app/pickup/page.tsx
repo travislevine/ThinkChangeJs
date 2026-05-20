@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { PickupSearchFilterBar } from "@/components/pickup/PickupSearchFilterBar"
 import { PickupTicketSearchSections } from "@/components/pickup/PickupTicketSearchSections"
 import { Button } from "@/components/ui/button"
+import { operatorNavigate } from "@/hooks/useOperatorNavigate"
 import { usePickupTicketDeviceLines } from "@/hooks/usePickupTicketDeviceLines"
 import { usePickupTickets } from "@/hooks/usePickupTickets"
 
@@ -22,7 +23,7 @@ export default function PickupPage() {
   } = usePickupTicketDeviceLines()
 
   const onBack = React.useCallback(() => {
-    router.push("/")
+    operatorNavigate(router, "/")
   }, [router])
 
   return (

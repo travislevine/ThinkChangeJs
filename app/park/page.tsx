@@ -3,6 +3,8 @@
 import * as React from "react"
 import { useRouter } from "next/navigation"
 
+import { operatorNavigate } from "@/hooks/useOperatorNavigate"
+
 import { BlankEntryForm } from "@/components/park/BlankEntryForm"
 import { PathwaySelector } from "@/components/park/PathwaySelector"
 import { PreRegisteredList } from "@/components/park/PreRegisteredList"
@@ -30,7 +32,7 @@ export default function ParkPage() {
 
   const onBack = React.useCallback(() => {
     if (!formTouched) {
-      router.push("/")
+      operatorNavigate(router, "/")
       return
     }
     setConfirmOpen(true)
@@ -122,7 +124,7 @@ export default function ParkPage() {
               className="min-h-[44px]"
               onClick={(e) => {
                 e.preventDefault()
-                router.push("/")
+                operatorNavigate(router, "/")
               }}
             >
               Discard

@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { operatorReplace } from "@/hooks/useOperatorNavigate"
 import { usePinAuth } from "@/hooks/usePinAuth"
 
 const PIN_PATTERN = /^\d{4,6}$/
@@ -24,7 +25,7 @@ export default function PinPage() {
   React.useEffect(() => {
     if (!ready) return
     if (isAuthorised) {
-      router.replace(nextRoute)
+      operatorReplace(router, nextRoute)
     }
   }, [isAuthorised, nextRoute, ready, router])
 
@@ -44,7 +45,7 @@ export default function PinPage() {
         setError("Incorrect PIN")
         return
       }
-      router.replace(nextRoute)
+      operatorReplace(router, nextRoute)
     } finally {
       setSubmitting(false)
     }
