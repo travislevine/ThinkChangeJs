@@ -10,6 +10,7 @@ import { ThemeProvider } from "@/components/shared/ThemeProvider"
 import { UpdatePrompt } from "@/components/shared/UpdatePrompt"
 import { OfflineRouteWarmer } from "@/components/shared/OfflineRouteWarmer"
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { requestPersistentStorage } from "@/lib/pwa/requestPersistentStorage"
 import { EventProvider } from "@/contexts/EventContext"
 import { SyncStatusProvider } from "@/contexts/SyncStatusContext"
 import { PinAuthProvider } from "@/hooks/usePinAuth"
@@ -65,13 +66,19 @@ function DevUnhandledRejectionLogger() {
 }
 
 export function ClientProviders({ children, toast }: ClientProvidersProps) {
+  React.useEffect(() => {
+    requestPersistentStorage()
+  }, [])
+
   return (
     <SerwistProvider
       swUrl="/sw.js"
       disable={process.env.NODE_ENV === "development" && !SERWIST_IN_DEV}
+      reloadOnOnline={false}
     >
       <ThemeProvider>
         <TooltipProvider delayDuration={300}>
+          <OfflineRouteWarmer />
           <PowerSyncProvider>
             <EventProvider>
               <SyncStatusProvider>
@@ -80,7 +87,6 @@ export function ClientProviders({ children, toast }: ClientProvidersProps) {
                     <DevServiceWorkerCleanup />
                     <DevUnhandledRejectionLogger />
                     <UpdatePrompt />
-                    <OfflineRouteWarmer />
                     {children}
                   </AuthGuard>
                 </PinAuthProvider>

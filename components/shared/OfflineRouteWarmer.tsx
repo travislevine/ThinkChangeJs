@@ -4,6 +4,7 @@ import * as React from "react"
 import { useRouter } from "next/navigation"
 
 import { OPERATOR_ROUTES } from "@/lib/constants/operatorRoutes"
+import { cacheOperatorPagesInBrowser } from "@/lib/pwa/cacheOperatorPages"
 
 function cacheUrlWithSerwist(path: string): void {
   if (typeof window === "undefined" || !window.serwist?.messageSW) {
@@ -16,14 +17,21 @@ function cacheUrlWithSerwist(path: string): void {
   })
 }
 
-function warmRoute(path: string, router: ReturnType<typeof useRouter>): void {
+async function warmRoute(path: string, router: ReturnType<typeof useRouter>): Promise<void> {
   try {
     router.prefetch(path)
   } catch {
-    // Prefetch is best-effort.
+    // Prefetch is best-effort (online client navigation).
   }
 
-  void fetch(path, {
+  await fetch(path, {
+    credentials: "same-origin",
+    headers: {
+      Accept: "text/html,application/xhtml+xml",
+    },
+  }).catch(() => undefined)
+
+  await fetch(path, {
     credentials: "same-origin",
     headers: {
       RSC: "1",
@@ -31,51 +39,55 @@ function warmRoute(path: string, router: ReturnType<typeof useRouter>): void {
     },
   }).catch(() => undefined)
 
-  void fetch(path, {
-    credentials: "same-origin",
-    headers: {
-      Accept: "text/html,application/xhtml+xml",
-    },
-  }).catch(() => undefined)
-
   cacheUrlWithSerwist(path)
 }
 
 /**
- * While online, prefetch each operator route so Serwist caches HTML + RSC payloads for offline navigation.
- * Visit every page once after deploy, or rely on this warmer on the dashboard boot path.
+ * While online, cache each operator route for offline use — including after the PWA is fully closed.
  */
 export function OfflineRouteWarmer(): null {
   const router = useRouter()
 
   React.useEffect(() => {
-    if (typeof window === "undefined") return
-
-    const warmRoutes = (): void => {
-      if (!navigator.onLine) return
-
-      for (const path of OPERATOR_ROUTES) {
-        if (path === "/") continue
-        warmRoute(path, router)
-      }
-    }
-
-    warmRoutes()
-
-    if (!("serviceWorker" in navigator)) {
+    if (typeof window === "undefined" || !navigator.onLine) {
       return
     }
 
+    let cancelled = false
+
+    const warmRoutes = async (): Promise<void> => {
+      await cacheOperatorPagesInBrowser()
+      if (cancelled) return
+
+      for (const path of OPERATOR_ROUTES) {
+        if (path === "/" || cancelled) {
+          continue
+        }
+        await warmRoute(path, router)
+      }
+    }
+
+    void warmRoutes()
+
+    if (!("serviceWorker" in navigator)) {
+      return () => {
+        cancelled = true
+      }
+    }
+
     void navigator.serviceWorker.ready.then(() => {
-      warmRoutes()
+      if (!cancelled) {
+        void warmRoutes()
+      }
     })
 
     const onControllerChange = (): void => {
-      warmRoutes()
+      void warmRoutes()
     }
 
     navigator.serviceWorker.addEventListener("controllerchange", onControllerChange)
     return () => {
+      cancelled = true
       navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange)
     }
   }, [router])

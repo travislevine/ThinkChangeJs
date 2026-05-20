@@ -3,17 +3,16 @@
 import Link from "next/link"
 import * as React from "react"
 
-import { isOfflineForNavigation } from "@/lib/navigation/isOfflineForNavigation"
+import { useOfflineForNavigation } from "@/hooks/useOfflineForNavigation"
 
 export type OperatorLinkProps = React.ComponentProps<typeof Link>
 
 /**
- * Uses Next.js client navigation when online; native navigation when offline so
- * the service worker can serve precached HTML (required on iOS WebKit).
+ * Next.js client navigation when online; full page load when offline (PWA / airplane mode).
  */
 export const OperatorLink = React.forwardRef<HTMLAnchorElement, OperatorLinkProps>(
   function OperatorLink({ href, prefetch, replace, scroll, ...rest }, ref) {
-    const offline = isOfflineForNavigation()
+    const offline = useOfflineForNavigation()
 
     if (offline) {
       const path = typeof href === "string" ? href : href.pathname ?? "/"

@@ -49,32 +49,36 @@ export function PowerSyncProvider({ children }: PowerSyncProviderProps) {
       }
       if (cancelled) return
 
-      const database = getDb()
-
-      const syncResult = await connectBikeParkPowerSync()
-      if (cancelled) return
-      if (!syncResult.ok) {
-        setInitError((prev) => prev ?? syncResult.error)
-      } else if (database.connected) {
-        try {
-          const firstSync = new AbortController()
-          const timeout = window.setTimeout(() => firstSync.abort(), 30_000)
-          try {
-            await database.waitForFirstSync(firstSync.signal)
-          } finally {
-            window.clearTimeout(timeout)
-          }
-        } catch {
-          // Boot continues if the first download is slow; manual refresh can retry sync.
-        }
-      }
-
-      await seedTicketPoolIfEmpty(database)
-      if (cancelled) return
-      await consolidateDuplicateActiveEvents(database)
-      if (cancelled) return
+      // Show the UI as soon as the local DB is open — do not block on cloud sync (Safari is slow).
       setInitError(null)
       setReady(true)
+
+      const database = getDb()
+
+      void (async () => {
+        const syncResult = await connectBikeParkPowerSync()
+        if (cancelled) return
+
+        if (syncResult.ok && database.connected) {
+          try {
+            const firstSync = new AbortController()
+            const timeoutMs = isAppleWebKit() ? 4_000 : 12_000
+            const timeout = window.setTimeout(() => firstSync.abort(), timeoutMs)
+            try {
+              await database.waitForFirstSync(firstSync.signal)
+            } finally {
+              window.clearTimeout(timeout)
+            }
+          } catch {
+            // Sync continues in the background via PowerSync listeners.
+          }
+        }
+
+        if (cancelled) return
+        await seedTicketPoolIfEmpty(database)
+        if (cancelled) return
+        await consolidateDuplicateActiveEvents(database)
+      })()
     })()
 
     return () => {
