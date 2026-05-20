@@ -7,8 +7,9 @@ import type {
   SendSmsErrorResponse,
   SendSmsRequest,
   SendSmsSuccessResponse,
+  SmsMessageVariant,
 } from "@/lib/types/sendSms"
-import { buildBikeParkReadySmsBody } from "@/lib/utils/smsMessageBody"
+import { buildSmsMessageBody } from "@/lib/utils/smsMessageBody"
 import { sanitizeSmsToE164 } from "@/lib/utils/sanitizeSmsTo"
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -57,12 +58,37 @@ function parseSendSmsRequest(
     patronName = body.patronName
   }
 
+  let variant: SmsMessageVariant = "ready_for_collection"
+  if (body.variant !== undefined) {
+    if (body.variant !== "ready_for_collection" && body.variant !== "checked_in") {
+      const payload: SendSmsErrorResponse = { error: "Invalid request body" }
+      return { ok: false, response: NextResponse.json(payload, { status: 400 }) }
+    }
+    variant = body.variant
+  }
+
+  let checkedInAt: number | undefined
+  if (body.checkedInAt !== undefined) {
+    if (typeof body.checkedInAt !== "number" || !Number.isFinite(body.checkedInAt)) {
+      const payload: SendSmsErrorResponse = { error: "Invalid request body" }
+      return { ok: false, response: NextResponse.json(payload, { status: 400 }) }
+    }
+    checkedInAt = Math.floor(body.checkedInAt)
+  }
+
+  if (variant === "checked_in" && checkedInAt === undefined) {
+    const payload: SendSmsErrorResponse = { error: "Check-in time is required" }
+    return { ok: false, response: NextResponse.json(payload, { status: 400 }) }
+  }
+
   return {
     ok: true,
     value: {
       to,
       ticketNumber: ticketNumberRaw,
       patronName,
+      variant,
+      checkedInAt,
     },
   }
 }
@@ -89,9 +115,9 @@ export async function POST(request: Request): Promise<NextResponse> {
     return NextResponse.json(payload, { status: 400 })
   }
 
-  const accountSid = process.env.TWILIO_ACCOUNT_SID
-  const authToken = process.env.TWILIO_AUTH_TOKEN
-  const fromNumber = process.env.TWILIO_PHONE_NUMBER
+  const accountSid = process.env.TWILIO_ACCOUNT_SID?.trim()
+  const authToken = process.env.TWILIO_AUTH_TOKEN?.trim()
+  const fromNumber = process.env.TWILIO_PHONE_NUMBER?.trim()
 
   if (!accountSid || !authToken || !fromNumber) {
     logRouteHandlerError(
@@ -102,9 +128,11 @@ export async function POST(request: Request): Promise<NextResponse> {
     return NextResponse.json(payload, { status: 500 })
   }
 
-  const messageBody = buildBikeParkReadySmsBody(
+  const messageBody = buildSmsMessageBody(
+    parsedBody.value.variant ?? "ready_for_collection",
     parsedBody.value.ticketNumber,
     parsedBody.value.patronName,
+    parsedBody.value.checkedInAt,
   )
   const client = twilio(accountSid, authToken)
 

@@ -1,7 +1,23 @@
 export type SendSmsStatus = "idle" | "sending" | "sent" | "error"
 
+export type SmsMessageVariant = "ready_for_collection" | "checked_in"
+
+export interface SendSmsOptions {
+  variant?: SmsMessageVariant
+  ticketId?: string
+  /** Unix seconds — required when variant is `checked_in`. */
+  checkedInAt?: number
+  /** When true, skips Send SMS button state (drop-off auto-send). */
+  silent?: boolean
+}
+
 export interface UseSendSmsResult {
-  sendSms: (to: string, ticketNumber: number, patronName: string | null) => Promise<void>
+  sendSms: (
+    to: string,
+    ticketNumber: number,
+    patronName: string | null,
+    options?: SendSmsOptions
+  ) => Promise<void>
   status: SendSmsStatus
 }
 
@@ -9,6 +25,9 @@ export interface SendSmsRequest {
   to: string
   ticketNumber: number
   patronName: string | null
+  variant?: SmsMessageVariant
+  /** Unix seconds — required when variant is `checked_in`. */
+  checkedInAt?: number
 }
 
 export interface SendSmsSuccessResponse {

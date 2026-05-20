@@ -10,7 +10,9 @@ import { getOrCreateDeviceUuid } from "@/lib/deviceUuid"
 import type { DropOffBlankEntryFormState } from "@/lib/types/dropOffForm"
 
 export interface CreateDropOffTicketResult {
-  create: (state: DropOffBlankEntryFormState) => Promise<{ ticketId: string; ticketNumber: number }>
+  create: (
+    state: DropOffBlankEntryFormState
+  ) => Promise<{ ticketId: string; ticketNumber: number; checkedInAt: number }>
   isSubmitting: boolean
   error: string | null
 }
@@ -31,7 +33,9 @@ export function useCreateDropOffTicket(): CreateDropOffTicketResult {
   const [error, setError] = React.useState<string | null>(null)
 
   const create = React.useCallback(
-    async (state: DropOffBlankEntryFormState): Promise<{ ticketId: string; ticketNumber: number }> => {
+    async (
+      state: DropOffBlankEntryFormState
+    ): Promise<{ ticketId: string; ticketNumber: number; checkedInAt: number }> => {
       if (!currentEvent) {
         throw new Error("No active event.")
       }
@@ -123,7 +127,7 @@ export function useCreateDropOffTicket(): CreateDropOffTicketResult {
         })
 
         success(`✓ Ticket #${String(ticketNumber).padStart(3, "0")} confirmed`)
-        return { ticketId: usedTicketId, ticketNumber }
+        return { ticketId: usedTicketId, ticketNumber, checkedInAt: now }
       } catch (e) {
         setError(inlineMessageForDropOffWrite(e))
         throw e

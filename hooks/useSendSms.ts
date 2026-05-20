@@ -8,6 +8,7 @@ import { SMS_SENT_STATUS_RESET_MS } from "@/lib/constants/sms"
 import { TOAST_DURATION_SMS_MS } from "@/lib/constants/toastDurations"
 import { appendSmsNote } from "@/lib/smsNotes"
 import type {
+  SendSmsOptions,
   SendSmsStatus,
   SendSmsSuccessResponse,
   UseSendSmsResult,
@@ -58,66 +59,91 @@ export function useSendSms(ticketId: string): UseSendSmsResult {
   }, [])
 
   const sendSms = React.useCallback(
-    async (to: string, ticketNumber: number, patronName: string | null): Promise<void> => {
+    async (
+      to: string,
+      ticketNumber: number,
+      patronName: string | null,
+      options?: SendSmsOptions
+    ): Promise<void> => {
+      const resolvedTicketId = options?.ticketId ?? ticketId
+      const variant = options?.variant ?? "ready_for_collection"
+      const checkedInAt = options?.checkedInAt
+      const silent = options?.silent === true
+
       if (!eventId) {
         toastError("Select an event before sending SMS.", smsToastOptions)
+        return
+      }
+
+      if (!resolvedTicketId.trim()) {
         return
       }
 
       if (inFlightRef.current) {
         return
       }
-      if (statusRef.current === "sending" || statusRef.current === "sent") {
+      if (
+        !silent &&
+        (statusRef.current === "sending" || statusRef.current === "sent")
+      ) {
         return
       }
 
       inFlightRef.current = true
-      setStatus("sending")
+      if (!silent) {
+        setStatus("sending")
+      }
 
       try {
         const response = await fetch("/api/send-sms", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ to, ticketNumber, patronName }),
+          body: JSON.stringify({ to, ticketNumber, patronName, variant, checkedInAt }),
         })
 
         const payload: unknown = await response.json().catch(() => null)
 
         if (!response.ok || !isSendSmsSuccessResponse(payload)) {
-          setStatus("error")
+          if (!silent) {
+            setStatus("error")
+            setTimeout(() => {
+              setStatus("idle")
+              statusRef.current = "idle"
+            }, 0)
+          }
           toastError(readSendSmsErrorToastMessage(payload), smsToastOptions)
-          setTimeout(() => {
-            setStatus("idle")
-            statusRef.current = "idle"
-          }, 0)
           return
         }
 
         try {
-          await appendSmsNote(ticketId, to, eventId)
+          await appendSmsNote(resolvedTicketId, to, eventId)
         } catch {
           toastError("SMS sent but the note could not be saved locally.", smsToastOptions)
         }
 
-        setStatus("sent")
-        statusRef.current = "sent"
-        success(`✓ SMS sent to ${to}`, smsToastOptions)
+        if (!silent) {
+          setStatus("sent")
+          statusRef.current = "sent"
 
-        if (idleAfterSentRef.current !== null) {
-          clearTimeout(idleAfterSentRef.current)
+          if (idleAfterSentRef.current !== null) {
+            clearTimeout(idleAfterSentRef.current)
+          }
+          idleAfterSentRef.current = setTimeout(() => {
+            idleAfterSentRef.current = null
+            setStatus("idle")
+            statusRef.current = "idle"
+          }, SMS_SENT_STATUS_RESET_MS)
         }
-        idleAfterSentRef.current = setTimeout(() => {
-          idleAfterSentRef.current = null
-          setStatus("idle")
-          statusRef.current = "idle"
-        }, SMS_SENT_STATUS_RESET_MS)
+        success(`✓ SMS sent to ${to}`, smsToastOptions)
       } catch {
-        setStatus("error")
+        if (!silent) {
+          setStatus("error")
+          setTimeout(() => {
+            setStatus("idle")
+            statusRef.current = "idle"
+          }, 0)
+        }
         toastError("SMS failed to send. Check the mobile number.", smsToastOptions)
-        setTimeout(() => {
-          setStatus("idle")
-          statusRef.current = "idle"
-        }, 0)
       } finally {
         inFlightRef.current = false
       }

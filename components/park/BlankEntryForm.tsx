@@ -2,6 +2,7 @@
 
 import * as React from "react"
 
+import { BlankEntryNoMobileDialog } from "@/components/park/BlankEntryNoMobileDialog"
 import { DeviceRow } from "@/components/park/DeviceRow"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -14,6 +15,7 @@ import type { DropOffBlankEntryFormState } from "@/lib/types/dropOffForm"
 import { validateDeviceRows } from "@/lib/utils/deviceRowValidation"
 import { isDeviceRowComplete, newEmptyDeviceRow } from "@/lib/utils/expandDeviceRows"
 import { useCreateDropOffTicket } from "@/hooks/useCreateDropOffTicket"
+import { useScheduleDropOffCheckedInSms } from "@/hooks/useScheduleDropOffCheckedInSms"
 import { useTicketNumberAvailability } from "@/hooks/useTicketNumberAvailability"
 
 export interface BlankEntryFormProps {
@@ -105,6 +107,8 @@ function validateBlankEntry(
 export function BlankEntryForm({ onTouched, initialState }: BlankEntryFormProps) {
   const [state, setState] = React.useState<DropOffBlankEntryFormState>(() => initialState ?? defaultState())
   const { create, isSubmitting, error: submitError } = useCreateDropOffTicket()
+  const { scheduleCheckedInSms } = useScheduleDropOffCheckedInSms()
+  const [noMobileDialogOpen, setNoMobileDialogOpen] = React.useState(false)
 
   const ticketNumberInt = React.useMemo(() => parseTicketNumber(state.ticketNumber), [state.ticketNumber])
   const ticketAvailability = useTicketNumberAvailability(ticketNumberInt)
@@ -147,6 +151,53 @@ export function BlankEntryForm({ onTouched, initialState }: BlankEntryFormProps)
   const showEmailError = Boolean(errors.email)
   const showDevicesError = Boolean(errors.devices)
 
+  const performDropOff = React.useCallback(async () => {
+    const mobile = state.mobile.trim()
+    const patronName = state.patronName.trim() ? state.patronName.trim() : null
+
+    try {
+      const result = await create(state)
+      if (mobile && ticketNumberInt !== null) {
+        scheduleCheckedInSms({
+          ticketId: result.ticketId,
+          mobile,
+          ticketNumber: result.ticketNumber,
+          patronName,
+          checkedInAt: result.checkedInAt,
+        })
+      }
+      setState(defaultState())
+      setSubmitAttempted(false)
+    } catch {
+      // error toast/banner handled by hook
+    }
+  }, [create, scheduleCheckedInSms, state, ticketNumberInt])
+
+  const onConfirmDropOff = React.useCallback(() => {
+    setSubmitAttempted(true)
+    const nextErrors = validateBlankEntry(
+      state,
+      ticketNumberInt,
+      Boolean(ticketNumberInt && ticketAvailability.inUse)
+    )
+    const hasErrors = Object.keys(nextErrors).length > 0
+    if (hasErrors) {
+      const first = document.querySelector("[aria-invalid='true']")
+      if (first instanceof HTMLElement) {
+        first.scrollIntoView({ block: "center", behavior: "smooth" })
+        first.focus()
+      }
+      return
+    }
+
+    if (!state.mobile.trim()) {
+      setNoMobileDialogOpen(true)
+      return
+    }
+
+    void performDropOff()
+  }, [performDropOff, state, ticketAvailability.inUse, ticketNumberInt])
+
   return (
     <section className="flex flex-col gap-6">
       <div className="grid grid-cols-1 gap-3">
@@ -185,7 +236,10 @@ export function BlankEntryForm({ onTouched, initialState }: BlankEntryFormProps)
             ) : null}
           </div>
           <div className="grid gap-1.5 sm:col-span-1">
-            <Label htmlFor="mobile">Mobile</Label>
+            <div className="flex items-center justify-between gap-3">
+              <Label htmlFor="mobile">Mobile</Label>
+              <Badge variant="outline">Optional</Badge>
+            </div>
             <Input
               id="mobile"
               type="tel"
@@ -288,34 +342,19 @@ export function BlankEntryForm({ onTouched, initialState }: BlankEntryFormProps)
         size="lg"
         className="min-h-[44px] w-full"
         disabled={isSubmitting}
-        onClick={async () => {
-          setSubmitAttempted(true)
-          const nextErrors = validateBlankEntry(
-            state,
-            ticketNumberInt,
-            Boolean(ticketNumberInt && ticketAvailability.inUse)
-          )
-          const hasErrors = Object.keys(nextErrors).length > 0
-          if (hasErrors) {
-            const first = document.querySelector("[aria-invalid='true']")
-            if (first instanceof HTMLElement) {
-              first.scrollIntoView({ block: "center", behavior: "smooth" })
-              first.focus()
-            }
-            return
-          }
-
-          try {
-            await create(state)
-            setState(defaultState())
-            setSubmitAttempted(false)
-          } catch {
-            // error toast/banner handled by hook
-          }
-        }}
+        onClick={onConfirmDropOff}
       >
         Confirm Drop-Off
       </Button>
+
+      <BlankEntryNoMobileDialog
+        open={noMobileDialogOpen}
+        onCancel={() => setNoMobileDialogOpen(false)}
+        onConfirm={() => {
+          setNoMobileDialogOpen(false)
+          void performDropOff()
+        }}
+      />
     </section>
   )
 }
