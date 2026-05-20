@@ -3,8 +3,13 @@
 import * as React from "react"
 
 import { useEvent } from "@/contexts/EventContext"
+import {
+  CHECK_TICKET_DEVICE_ADDED_NOTE_PREFIX,
+  isCheckTicketDeviceAddedNote,
+} from "@/lib/constants/checkTicketNotes"
 import { DEVICE_CATEGORIES } from "@/lib/constants/deviceCategories"
 import { db } from "@/lib/db/powersync"
+import { parsePickupDeviceBreakdown } from "@/lib/utils/formatPickupDeviceBreakdown"
 import type { CheckTicketNoteEntry, CheckTicketPickupEntry } from "@/lib/types/checkTicket"
 import type { PickupTicketDeviceLine } from "@/lib/types/pickup"
 
@@ -77,10 +82,14 @@ function groupNotes(rows: NoteRow[]): Record<string, CheckTicketNoteEntry[]> {
   for (const r of rows) {
     const tid = String(r.ticket_id ?? "")
     if (!tid) continue
+    const content = String(r.content ?? "").trim()
+    if (isCheckTicketDeviceAddedNote(content)) {
+      continue
+    }
     if (!map[tid]) map[tid] = []
     map[tid].push({
       noteId: String(r.id ?? ""),
-      content: String(r.content ?? "").trim(),
+      content,
       recordedAtSeconds: Math.max(0, asInt(r.recorded_at)),
     })
   }
@@ -88,6 +97,60 @@ function groupNotes(rows: NoteRow[]): Record<string, CheckTicketNoteEntry[]> {
     map[k].sort((a, b) => b.recordedAtSeconds - a.recordedAtSeconds)
   }
   return map
+}
+
+function deviceAddedNotesToPickupEntries(rows: NoteRow[]): Record<string, CheckTicketPickupEntry[]> {
+  const byTicket: Record<string, CheckTicketPickupEntry[]> = {}
+
+  for (const r of rows) {
+    const tid = String(r.ticket_id ?? "")
+    const noteId = String(r.id ?? "")
+    if (!tid || !noteId) continue
+
+    const content = String(r.content ?? "").trim()
+    if (!isCheckTicketDeviceAddedNote(content)) {
+      continue
+    }
+
+    const breakdown = content.slice(CHECK_TICKET_DEVICE_ADDED_NOTE_PREFIX.length).trim()
+    const deviceLines = parsePickupDeviceBreakdown(breakdown)
+    if (deviceLines.length === 0) {
+      continue
+    }
+
+    const devicesPickedUp = deviceLines.reduce((sum, line) => sum + line.quantity, 0)
+    const item: CheckTicketPickupEntry = {
+      pickupEventId: noteId,
+      kind: "device_added",
+      pickedUpAtSeconds: Math.max(0, asInt(r.recorded_at)),
+      devicesPickedUp,
+      deviceLines,
+    }
+    if (!byTicket[tid]) byTicket[tid] = []
+    byTicket[tid].push(item)
+  }
+
+  return byTicket
+}
+
+function mergePickupHistories(
+  pickups: Record<string, CheckTicketPickupEntry[]>,
+  deviceAdds: Record<string, CheckTicketPickupEntry[]>
+): Record<string, CheckTicketPickupEntry[]> {
+  const merged: Record<string, CheckTicketPickupEntry[]> = { ...pickups }
+
+  for (const [ticketId, adds] of Object.entries(deviceAdds)) {
+    if (!merged[ticketId]) {
+      merged[ticketId] = []
+    }
+    merged[ticketId].push(...adds)
+  }
+
+  for (const k of Object.keys(merged)) {
+    merged[k].sort((a, b) => b.pickedUpAtSeconds - a.pickedUpAtSeconds)
+  }
+
+  return merged
 }
 
 function mergePickups(rows: PickupFlatRow[]): Record<string, CheckTicketPickupEntry[]> {
@@ -131,6 +194,7 @@ function mergePickups(rows: PickupFlatRow[]): Record<string, CheckTicketPickupEn
     )
     const item: CheckTicketPickupEntry = {
       pickupEventId: peId,
+      kind: "pickup",
       pickedUpAtSeconds: v.pickedUpAtSeconds,
       devicesPickedUp: v.devicesPickedUp,
       deviceLines: lines,
@@ -149,18 +213,21 @@ function mergePickups(rows: PickupFlatRow[]): Record<string, CheckTicketPickupEn
 type DetailsState = {
   notes: Record<string, CheckTicketNoteEntry[]> | null
   pickups: Record<string, CheckTicketPickupEntry[]> | null
+  noteRows: NoteRow[] | null
   dataKey: string | null
 }
 
 const initialDetails: DetailsState = {
   notes: null,
   pickups: null,
+  noteRows: null,
   dataKey: null,
 }
 
 type DetailsAction =
   | { type: "reset" }
   | { type: "notes"; payload: Record<string, CheckTicketNoteEntry[]>; dataKey: string }
+  | { type: "noteRows"; payload: NoteRow[]; dataKey: string }
   | { type: "pickups"; payload: Record<string, CheckTicketPickupEntry[]>; dataKey: string }
 
 function detailsReducer(state: DetailsState, action: DetailsAction): DetailsState {
@@ -169,6 +236,8 @@ function detailsReducer(state: DetailsState, action: DetailsAction): DetailsStat
       return initialDetails
     case "notes":
       return { ...state, notes: action.payload, dataKey: action.dataKey }
+    case "noteRows":
+      return { ...state, noteRows: action.payload, dataKey: action.dataKey }
     case "pickups":
       return { ...state, pickups: action.payload, dataKey: action.dataKey }
   }
@@ -199,9 +268,11 @@ export function useCheckTicketRecordDetails(): UseCheckTicketRecordDetailsResult
         onResult: (qr) => {
           const raw = (qr.rows?._array ?? []) as unknown[]
           const rows = raw.map((r) => r as NoteRow)
+          dispatch({ type: "noteRows", payload: rows, dataKey: dk })
           dispatch({ type: "notes", payload: groupNotes(rows), dataKey: dk })
         },
         onError: () => {
+          dispatch({ type: "noteRows", payload: [], dataKey: dk })
           dispatch({ type: "notes", payload: {}, dataKey: dk })
         },
       },
@@ -230,10 +301,17 @@ export function useCheckTicketRecordDetails(): UseCheckTicketRecordDetailsResult
   const stale = state.dataKey !== key
 
   const notesByTicketId = stale ? {} : (state.notes ?? {})
-  const pickupsByTicketId = stale ? {} : (state.pickups ?? {})
+  const pickupsByTicketId = React.useMemo(() => {
+    if (stale || state.pickups === null || state.noteRows === null) {
+      return {}
+    }
+    const deviceAdds = deviceAddedNotesToPickupEntries(state.noteRows)
+    return mergePickupHistories(state.pickups, deviceAdds)
+  }, [stale, state.noteRows, state.pickups])
 
   const isLoading =
-    Boolean(eventId) && (state.notes === null || state.pickups === null || stale)
+    Boolean(eventId) &&
+    (state.notes === null || state.pickups === null || state.noteRows === null || stale)
 
   return {
     notesByTicketId,

@@ -4,6 +4,8 @@ import * as React from "react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
 import {
   CHECK_TICKET_SORT_MODE,
   labelForCheckTicketSortMode,
@@ -15,6 +17,8 @@ export interface CheckTicketSearchControlsProps {
   onSearchQueryChange: (value: string) => void
   sortMode: CheckTicketSortMode
   onSortModeChange: (mode: CheckTicketSortMode) => void
+  showCompleted: boolean
+  onShowCompletedChange: (value: boolean) => void
 }
 
 export function CheckTicketSearchControls({
@@ -22,6 +26,8 @@ export function CheckTicketSearchControls({
   onSearchQueryChange,
   sortMode,
   onSortModeChange,
+  showCompleted,
+  onShowCompletedChange,
 }: CheckTicketSearchControlsProps) {
   const onToggleSort = React.useCallback(() => {
     onSortModeChange(
@@ -44,6 +50,19 @@ export function CheckTicketSearchControls({
         inputMode="search"
         aria-label="Search tickets"
       />
+
+      <div className="flex items-center justify-between gap-4 rounded-md border border-border px-3 py-3">
+        <Label htmlFor="check-ticket-show-completed" className="text-sm font-medium">
+          Show Completed
+        </Label>
+        <Switch
+          id="check-ticket-show-completed"
+          checked={showCompleted}
+          onCheckedChange={onShowCompletedChange}
+          className="min-h-[44px]"
+          aria-label="Show completed tickets"
+        />
+      </div>
 
       <Button
         type="button"

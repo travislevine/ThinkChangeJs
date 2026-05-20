@@ -18,3 +18,26 @@ export function formatPickupDeviceBreakdown(lines: PickupTicketDeviceLine[]): st
 
   return sorted.map((l) => `${l.deviceType} ×${l.quantity}`).join(" · ")
 }
+
+/** Parses {@link formatPickupDeviceBreakdown} output back into device lines. */
+export function parsePickupDeviceBreakdown(text: string): PickupTicketDeviceLine[] {
+  const trimmed = text.trim()
+  if (!trimmed) {
+    return []
+  }
+
+  const lines: PickupTicketDeviceLine[] = []
+  for (const part of trimmed.split(" · ")) {
+    const segment = part.trim()
+    const match = segment.match(/^(.+) ×(\d+)$/)
+    if (!match) {
+      continue
+    }
+    const quantity = Math.floor(Number(match[2]))
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      continue
+    }
+    lines.push({ deviceType: match[1].trim(), quantity })
+  }
+  return lines
+}

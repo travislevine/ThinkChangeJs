@@ -8,8 +8,11 @@ export interface CheckTicketNoteEntry {
   recordedAtSeconds: number
 }
 
+export type CheckTicketPickupEntryKind = "pickup" | "device_added"
+
 export interface CheckTicketPickupEntry {
   pickupEventId: string
+  kind: CheckTicketPickupEntryKind
   pickedUpAtSeconds: number
   devicesPickedUp: number
   deviceLines: PickupTicketDeviceLine[]

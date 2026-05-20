@@ -4,12 +4,19 @@ import * as React from "react"
 
 import { useEvent } from "@/contexts/EventContext"
 import { useToast } from "@/hooks/useToast"
+import {
+  CHECK_TICKET_DEVICE_ADDED_NOTE_PREFIX,
+  CHECK_TICKET_DEVICE_REMOVED_NOTE_PREFIX,
+} from "@/lib/constants/checkTicketNotes"
+import { INLINE_POWER_SYNC_SAVE_FAILED } from "@/lib/constants/inlineErrors"
 import { db } from "@/lib/db/powersync"
 import { loadCheckTicketEditState } from "@/lib/db/loadCheckTicketEditState"
 import type { CheckTicketEditFormState } from "@/lib/types/checkTicketEdit"
+import type { DropOffDeviceRow } from "@/lib/types/dropOffForm"
+import { diffCheckTicketDevices } from "@/lib/utils/checkTicketDeviceDiff"
 import { computeDevicesRemainingAfterTotalChange } from "@/lib/utils/checkTicketDevicesRemaining"
-import { INLINE_POWER_SYNC_SAVE_FAILED } from "@/lib/constants/inlineErrors"
 import { validateCheckTicketEditForm } from "@/lib/utils/checkTicketEditValidation"
+import { formatPickupDeviceBreakdown } from "@/lib/utils/formatPickupDeviceBreakdown"
 
 export interface EditCheckTicketState {
   open: boolean
@@ -39,6 +46,7 @@ export function useEditCheckTicket(): [EditCheckTicketState, EditCheckTicketActi
   const [ticketNumber, setTicketNumber] = React.useState<number | null>(null)
   const [baselineTotal, setBaselineTotal] = React.useState<number>(0)
   const [baselineRemaining, setBaselineRemaining] = React.useState<number>(0)
+  const [baselineDevices, setBaselineDevices] = React.useState<DropOffDeviceRow[]>([])
   const [form, setForm] = React.useState<CheckTicketEditFormState | null>(null)
   const [isSaving, setIsSaving] = React.useState(false)
   const [err, setErr] = React.useState<string | null>(null)
@@ -47,6 +55,7 @@ export function useEditCheckTicket(): [EditCheckTicketState, EditCheckTicketActi
     setForm(null)
     setErr(null)
     setTicketNumber(null)
+    setBaselineDevices([])
     setTicketId(id)
     setOpen(true)
   }, [])
@@ -70,6 +79,12 @@ export function useEditCheckTicket(): [EditCheckTicketState, EditCheckTicketActi
         setTicketNumber(result.ticketNumber)
         setBaselineTotal(result.baselineTotal)
         setBaselineRemaining(result.baselineRemaining)
+        setBaselineDevices(
+          result.form.devices.map((row) => ({
+            ...row,
+            id: row.id,
+          }))
+        )
         setForm(result.form)
         setErr(null)
       } else {
@@ -99,10 +114,14 @@ export function useEditCheckTicket(): [EditCheckTicketState, EditCheckTicketActi
       newTotal
     )
 
+    const deviceDiff = diffCheckTicketDevices(baselineDevices, form.devices)
+
     setIsSaving(true)
     setErr(null)
     try {
       await db.writeTransaction(async (tx) => {
+        const now = Math.floor(Date.now() / 1000)
+
         await tx.execute(
           "UPDATE tickets SET patron_name = ?, mobile = ?, email = ?, total_devices = ?, devices_remaining = ? WHERE id = ? AND event_id = ? AND deleted_at IS NULL",
           [
@@ -123,6 +142,32 @@ export function useEditCheckTicket(): [EditCheckTicketState, EditCheckTicketActi
             [crypto.randomUUID(), ticketId, row.deviceType, 1, row.colour]
           )
         }
+
+        if (deviceDiff.added.length > 0) {
+          const addedBreakdown = formatPickupDeviceBreakdown(deviceDiff.added)
+          await tx.execute(
+            "INSERT INTO notes (id, ticket_id, content, recorded_at) VALUES (?, ?, ?, ?)",
+            [
+              crypto.randomUUID(),
+              ticketId,
+              `${CHECK_TICKET_DEVICE_ADDED_NOTE_PREFIX}${addedBreakdown}`,
+              now,
+            ]
+          )
+        }
+
+        if (deviceDiff.removed.length > 0) {
+          const removedBreakdown = formatPickupDeviceBreakdown(deviceDiff.removed)
+          await tx.execute(
+            "INSERT INTO notes (id, ticket_id, content, recorded_at) VALUES (?, ?, ?, ?)",
+            [
+              crypto.randomUUID(),
+              ticketId,
+              `${CHECK_TICKET_DEVICE_REMOVED_NOTE_PREFIX}${removedBreakdown}`,
+              now,
+            ]
+          )
+        }
       })
 
       success("✓ Ticket updated")
@@ -133,6 +178,7 @@ export function useEditCheckTicket(): [EditCheckTicketState, EditCheckTicketActi
       setIsSaving(false)
     }
   }, [
+    baselineDevices,
     baselineRemaining,
     baselineTotal,
     eventId,

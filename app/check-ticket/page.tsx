@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button"
 import { useSyncStatus } from "@/contexts/SyncStatusContext"
 import { CHECK_TICKET_SORT_MODE } from "@/lib/constants/checkTicket"
 import type { CheckTicketSortMode } from "@/lib/constants/checkTicket"
+import { TICKET_STATUS_COMPLETED } from "@/lib/constants/ticketStatus"
 import { useCheckTicketRecordDetails } from "@/hooks/useCheckTicketRecordDetails"
 import { useAddCheckTicketNote } from "@/hooks/useAddCheckTicketNote"
 import { useCheckTicketTickets } from "@/hooks/useCheckTicketTickets"
@@ -28,6 +29,7 @@ export default function CheckTicketPage() {
   const [sortMode, setSortMode] = React.useState<CheckTicketSortMode>(
     CHECK_TICKET_SORT_MODE.NEWEST_FIRST
   )
+  const [showCompleted, setShowCompleted] = React.useState(false)
 
   const {
     tickets,
@@ -87,6 +89,12 @@ export default function CheckTicketPage() {
     }
   }, [refreshing, requestSync])
 
+  const { activeTickets, completedTickets } = React.useMemo(() => {
+    const active = tickets.filter((t) => t.status !== TICKET_STATUS_COMPLETED)
+    const completed = tickets.filter((t) => t.status === TICKET_STATUS_COMPLETED)
+    return { activeTickets: active, completedTickets: completed }
+  }, [tickets])
+
   const listLoading = ticketsLoading || devicesLoading || detailsLoading
 
   return (
@@ -124,6 +132,8 @@ export default function CheckTicketPage() {
           onSearchQueryChange={setSearchQuery}
           sortMode={sortMode}
           onSortModeChange={setSortMode}
+          showCompleted={showCompleted}
+          onShowCompletedChange={setShowCompleted}
         />
 
         {devicesError ? (
@@ -134,7 +144,9 @@ export default function CheckTicketPage() {
 
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto pb-2">
           <CheckTicketRecordList
-            tickets={tickets}
+            activeTickets={activeTickets}
+            completedTickets={completedTickets}
+            showCompleted={showCompleted}
             eventTicketCount={eventTicketCount}
             deviceLinesByTicketId={linesByTicketId}
             notesByTicketId={notesByTicketId}
@@ -152,7 +164,7 @@ export default function CheckTicketPage() {
             ? "Failed to load tickets for this event."
             : listLoading
               ? "Loading tickets."
-              : `${tickets.length} ticket${tickets.length === 1 ? "" : "s"} match the current search and sort.`}
+              : `${activeTickets.length + (showCompleted ? completedTickets.length : 0)} ticket${activeTickets.length + (showCompleted ? completedTickets.length : 0) === 1 ? "" : "s"} match the current search and sort.`}
         </p>
 
         <EditCheckTicketSheet controller={editTicketController} />

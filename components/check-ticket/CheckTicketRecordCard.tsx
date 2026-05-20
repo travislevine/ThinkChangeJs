@@ -147,10 +147,14 @@ export function CheckTicketRecordCard({
             ) : (
               <ul className="flex flex-col gap-3">
                 {pickups.map((p) => {
-                  const detail =
+                  const breakdown =
                     p.deviceLines.length > 0
                       ? formatPickupDeviceBreakdown(p.deviceLines)
                       : `${p.devicesPickedUp} device${p.devicesPickedUp === 1 ? "" : "s"}`
+                  const detail =
+                    p.kind === "device_added"
+                      ? `Devices added: ${breakdown}`
+                      : breakdown
                   return (
                     <li key={p.pickupEventId} className="text-sm">
                       <div className="text-xs text-muted-foreground">
