@@ -8,4 +8,4 @@ export const AUTO_PATRON_SMS_DELAY_MS = 3_000
 export const DROP_OFF_CHECKED_IN_SMS_DELAY_MS = AUTO_PATRON_SMS_DELAY_MS
 
 /** Placeholder until the real BikePark rating Google Form URL is configured. */
-export const BIKEPARK_RATING_SURVEY_URL = "https://forms.gle/bikepark-rating-placeholder"
+export const BIKEPARK_RATING_SURVEY_URL = "https://tinyurl.com/Bike-Park-App"
