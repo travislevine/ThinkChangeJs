@@ -3,14 +3,17 @@
 import * as React from "react"
 
 import { PowerSyncBootSkeleton } from "@/components/shared/PowerSyncBootSkeleton"
+import { Button } from "@/components/ui/button"
 import {
   connectBikeParkPowerSync,
-  db,
   ensurePowerSyncInitialized,
+  getDb,
+  resetPowerSyncInit,
 } from "@/lib/db/powersync"
 import { consolidateDuplicateActiveEvents } from "@/lib/db/reconcileActiveEvents"
 import { seedTicketPoolIfEmpty } from "@/lib/db/seedTicketPool"
 import { getOrCreateDeviceUuid } from "@/lib/deviceUuid"
+import { isAppleWebKit } from "@/lib/platform/isAppleWebKit"
 
 const PowerSyncReadyContext = React.createContext(false)
 
@@ -25,6 +28,7 @@ export interface PowerSyncProviderProps {
 export function PowerSyncProvider({ children }: PowerSyncProviderProps) {
   const [ready, setReady] = React.useState(false)
   const [initError, setInitError] = React.useState<string | null>(null)
+  const [retryCount, setRetryCount] = React.useState(0)
 
   React.useEffect(() => {
     getOrCreateDeviceUuid()
@@ -45,18 +49,18 @@ export function PowerSyncProvider({ children }: PowerSyncProviderProps) {
       }
       if (cancelled) return
 
-      // Download first when credentials exist so we do not create a local-only "Default event"
-      // + pool that later conflicts with server `events` (two `is_active = 1` → wrong `event_id` for lists).
+      const database = getDb()
+
       const syncResult = await connectBikeParkPowerSync()
       if (cancelled) return
       if (!syncResult.ok) {
         setInitError((prev) => prev ?? syncResult.error)
-      } else if (db.connected) {
+      } else if (database.connected) {
         try {
           const firstSync = new AbortController()
           const timeout = window.setTimeout(() => firstSync.abort(), 30_000)
           try {
-            await db.waitForFirstSync(firstSync.signal)
+            await database.waitForFirstSync(firstSync.signal)
           } finally {
             window.clearTimeout(timeout)
           }
@@ -65,39 +69,63 @@ export function PowerSyncProvider({ children }: PowerSyncProviderProps) {
         }
       }
 
-      await seedTicketPoolIfEmpty(db)
+      await seedTicketPoolIfEmpty(database)
       if (cancelled) return
-      await consolidateDuplicateActiveEvents(db)
+      await consolidateDuplicateActiveEvents(database)
       if (cancelled) return
+      setInitError(null)
       setReady(true)
     })()
 
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [retryCount])
 
   if (!ready) {
     return <PowerSyncBootSkeleton />
   }
 
   if (initError) {
+    const onSecureOrigin =
+      typeof window !== "undefined" && window.isSecureContext === true
+
     return (
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-6 py-10">
         <div className="rounded-xl border border-border bg-card p-5 text-sm text-foreground shadow-sm">
           <div className="text-base font-semibold">Offline database unavailable</div>
-          <p className="mt-2 text-muted-foreground">
-            This usually happens when opening the dev server from a phone over your LAN using plain HTTP
-            (for example, <span className="font-mono">http://192.168.x.x:3000</span>). Some browser
-            APIs required by SQLite/PowerSync are restricted outside secure contexts.
-          </p>
+          {onSecureOrigin ? (
+            <p className="mt-2 text-muted-foreground">
+              BikePark could not open its local database on this device
+              {isAppleWebKit() ? " (iPhone/iPad)" : ""}. This is often caused by low storage,
+              a private browsing session, or a stale site cache after an update.
+            </p>
+          ) : (
+            <p className="mt-2 text-muted-foreground">
+              This page must be opened over HTTPS. Plain HTTP (for example a LAN dev URL like{" "}
+              <span className="font-mono">http://192.168.x.x:3000</span>) blocks the SQLite APIs
+              PowerSync needs.
+            </p>
+          )}
           <p className="mt-3 text-muted-foreground">
-            Best fix: use HTTPS for the dev server, or test on the same machine using{" "}
-            <span className="font-mono">http://localhost</span>.
+            Try closing other tabs, freeing storage, then tap Retry. If it still fails, clear this
+            site&apos;s data in Safari settings or remove and re-add the home-screen icon.
           </p>
-          <div className="mt-3 rounded-lg border border-border bg-muted/40 px-3 py-2 font-mono text-xs text-muted-foreground">
+          <div className="mt-3 rounded-lg border border-border bg-muted/40 px-3 py-2 font-mono text-xs text-muted-foreground break-words">
             {initError}
           </div>
+          <Button
+            type="button"
+            className="mt-4 min-h-[44px] w-full"
+            onClick={() => {
+              resetPowerSyncInit()
+              setInitError(null)
+              setReady(false)
+              setRetryCount((n) => n + 1)
+            }}
+          >
+            Retry
+          </Button>
         </div>
       </div>
     )
@@ -107,3 +135,5 @@ export function PowerSyncProvider({ children }: PowerSyncProviderProps) {
     <PowerSyncReadyContext.Provider value={true}>{children}</PowerSyncReadyContext.Provider>
   )
 }
+
+PowerSyncProvider.displayName = "PowerSyncProvider"

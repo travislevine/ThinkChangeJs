@@ -2,7 +2,9 @@
 
 import * as React from "react"
 
-import { db } from "@/lib/db/powersync"
+import { SyncStatus } from "@powersync/common"
+
+import { getDb } from "@/lib/db/powersync"
 import {
   CONNECTIVITY_PROBE_INTERVAL_MS,
   CONNECTIVITY_PROBE_TIMEOUT_MS,
@@ -72,9 +74,11 @@ async function probeConnectivity(signal: AbortSignal): Promise<boolean> {
   }
 }
 
+const INITIAL_SYNC_STATUS = new SyncStatus({})
+
 export function SyncStatusProvider({ children }: { children: React.ReactNode }) {
   const [isOnline, setIsOnline] = React.useState<boolean>(() => readNavigatorOnline())
-  const [status, setStatus] = React.useState(() => db.currentStatus)
+  const [status, setStatus] = React.useState<SyncStatus>(INITIAL_SYNC_STATUS)
 
   const isOnlineRef = React.useRef(isOnline)
   React.useEffect(() => {
@@ -82,7 +86,10 @@ export function SyncStatusProvider({ children }: { children: React.ReactNode }) 
   }, [isOnline])
 
   React.useEffect(() => {
-    const removeDbListener = db.registerListener({
+    const database = getDb()
+    setStatus(database.currentStatus)
+
+    const removeDbListener = database.registerListener({
       statusChanged: (next) => {
         setStatus(next)
       },

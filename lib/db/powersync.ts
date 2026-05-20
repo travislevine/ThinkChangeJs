@@ -1,9 +1,5 @@
 import "@/lib/polyfills/insecureContextClient"
-import {
-  PowerSyncDatabase,
-  WASQLiteOpenFactory,
-  WASQLiteVFS,
-} from "@powersync/web"
+import { PowerSyncDatabase } from "@powersync/web"
 
 import { bikeParkSchema } from "@/lib/db/schema"
 import { createBikeParkConnector } from "@/lib/db/sync"
@@ -11,83 +7,114 @@ import { isAppleWebKit } from "@/lib/platform/isAppleWebKit"
 
 const DB_FILENAME = "bikepark.db"
 
+/** Default PowerSync page cache (50 MB) is too heavy for many iPhones. */
+const APPLE_CACHE_SIZE_KB = 8 * 1024
+
+const INIT_RETRY_DELAYS_MS = [0, 400, 1200] as const
+
 function isInsecureContext(): boolean {
   if (typeof window === "undefined") return false
-  // Secure contexts include https:// and http://localhost. LAN http://IP is insecure.
   return window.isSecureContext !== true
 }
 
-function supportsOpfs(): boolean {
-  return (
-    typeof navigator !== "undefined" &&
-    "storage" in navigator &&
-    typeof navigator.storage.getDirectory === "function"
-  )
+function usesMainThreadSqlite(): boolean {
+  return isInsecureContext() || isAppleWebKit()
 }
 
 function createPowerSyncDatabase(): PowerSyncDatabase {
-  const insecure = isInsecureContext()
-  const appleWebKit =
-    typeof window !== "undefined" && isAppleWebKit() && !insecure
-
-  if (appleWebKit && supportsOpfs()) {
-    const enableMultiTabs = typeof SharedWorker !== "undefined"
-    return new PowerSyncDatabase({
-      schema: bikeParkSchema,
-      database: new WASQLiteOpenFactory({
-        dbFilename: DB_FILENAME,
-        vfs: WASQLiteVFS.OPFSCoopSyncVFS,
-        flags: {
-          enableMultiTabs,
-        },
-      }),
-      flags: {
-        enableMultiTabs,
-      },
-    })
+  if (typeof window === "undefined") {
+    throw new Error("PowerSync must be initialized in the browser.")
   }
 
-  if (appleWebKit) {
-    return new PowerSyncDatabase({
-      schema: bikeParkSchema,
-      database: {
-        dbFilename: DB_FILENAME,
-      },
-      flags: {
-        useWebWorker: false,
-        enableMultiTabs: false,
-      },
-    })
-  }
-
-  if (insecure) {
-    return new PowerSyncDatabase({
-      schema: bikeParkSchema,
-      database: {
-        dbFilename: DB_FILENAME,
-      },
-      flags: {
-        // In insecure contexts, `navigator.locks` is missing in workers on some browsers.
-        useWebWorker: false,
-        enableMultiTabs: false,
-      },
-    })
-  }
+  const mainThread = usesMainThreadSqlite()
+  const apple = isAppleWebKit() && !isInsecureContext()
 
   return new PowerSyncDatabase({
     schema: bikeParkSchema,
     database: {
       dbFilename: DB_FILENAME,
+      ...(apple ? { cacheSizeKb: APPLE_CACHE_SIZE_KB } : {}),
+    },
+    flags: {
+      useWebWorker: !mainThread,
+      enableMultiTabs: false,
+      disableSSRWarning: true,
     },
   })
 }
 
-export const db = createPowerSyncDatabase()
-
+let dbInstance: PowerSyncDatabase | null = null
 let initPromise: Promise<void> | null = null
 
+function resetDbInstance(): void {
+  dbInstance = null
+  initPromise = null
+}
+
+/** Browser-only PowerSync singleton (lazy — avoids SSR picking the wrong profile). */
+export function getDb(): PowerSyncDatabase {
+  dbInstance ??= createPowerSyncDatabase()
+  return dbInstance
+}
+
+function bindDbProperty(instance: PowerSyncDatabase, prop: string | symbol): unknown {
+  const value = Reflect.get(instance as object, prop)
+  if (typeof value === "function") {
+    return (value as (...args: unknown[]) => unknown).bind(instance)
+  }
+  return value
+}
+
+/** Back-compat export used across hooks and contexts. */
+export const db: PowerSyncDatabase = new Proxy({} as PowerSyncDatabase, {
+  get(_target, prop) {
+    if (typeof window === "undefined") {
+      return undefined
+    }
+    return bindDbProperty(getDb(), prop)
+  },
+})
+
+async function initDbWithRetries(): Promise<void> {
+  let lastError: unknown
+
+  for (let attempt = 0; attempt < INIT_RETRY_DELAYS_MS.length; attempt++) {
+    const delay = INIT_RETRY_DELAYS_MS[attempt]
+    if (delay > 0) {
+      await new Promise<void>((resolve) => {
+        window.setTimeout(resolve, delay)
+      })
+    }
+
+    resetDbInstance()
+
+    try {
+      await getDb().init()
+      return
+    } catch (error) {
+      lastError = error
+    }
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error("Offline database failed to initialize on this device/browser.")
+}
+
+export function resetPowerSyncInit(): void {
+  resetDbInstance()
+}
+
 export function ensurePowerSyncInitialized(): Promise<void> {
-  initPromise ??= db.init()
+  if (initPromise) {
+    return initPromise
+  }
+
+  initPromise = initDbWithRetries().catch((error) => {
+    initPromise = null
+    throw error
+  })
+
   return initPromise
 }
 
@@ -102,7 +129,8 @@ export async function connectBikeParkPowerSync(): Promise<
     if (typeof window === "undefined") {
       return { ok: true }
     }
-    if (db.connected || db.connecting) {
+    const database = getDb()
+    if (database.connected || database.connecting) {
       return { ok: true }
     }
     const connector = createBikeParkConnector()
@@ -110,7 +138,7 @@ export async function connectBikeParkPowerSync(): Promise<
     if (!creds) {
       return { ok: true }
     }
-    await db.connect(connector)
+    await database.connect(connector)
     return { ok: true }
   } catch (e) {
     return {
