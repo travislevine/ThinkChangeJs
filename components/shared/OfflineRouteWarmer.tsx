@@ -4,7 +4,11 @@ import * as React from "react"
 import { useRouter } from "next/navigation"
 
 import { OPERATOR_ROUTES } from "@/lib/constants/operatorRoutes"
-import { cacheOperatorPagesInBrowser } from "@/lib/pwa/cacheOperatorPages"
+import {
+  areOperatorPagesCached,
+  cacheOperatorPagesInBrowser,
+} from "@/lib/pwa/cacheOperatorPages"
+import { isInstalledPwa } from "@/lib/platform/isInstalledPwa"
 
 function cacheUrlWithSerwist(path: string): void {
   if (typeof window === "undefined" || !window.serwist?.messageSW) {
@@ -21,7 +25,7 @@ async function warmRoute(path: string, router: ReturnType<typeof useRouter>): Pr
   try {
     router.prefetch(path)
   } catch {
-    // Prefetch is best-effort (online client navigation).
+    // Prefetch is best-effort (browser tab online).
   }
 
   await fetch(path, {
@@ -43,7 +47,8 @@ async function warmRoute(path: string, router: ReturnType<typeof useRouter>): Pr
 }
 
 /**
- * While online, cache each operator route for offline use — including after the PWA is fully closed.
+ * While online, cache operator HTML for cold-start offline (installed PWA).
+ * Retries until all routes are in `bikepark-operator-pages` when running as installed app.
  */
 export function OfflineRouteWarmer(): null {
   const router = useRouter()
@@ -64,6 +69,20 @@ export function OfflineRouteWarmer(): null {
           continue
         }
         await warmRoute(path, router)
+      }
+
+      if (!isInstalledPwa() || cancelled) {
+        return
+      }
+
+      for (let attempt = 0; attempt < 5 && !cancelled; attempt++) {
+        if (await areOperatorPagesCached()) {
+          return
+        }
+        await cacheOperatorPagesInBrowser()
+        await new Promise<void>((resolve) => {
+          window.setTimeout(resolve, 400)
+        })
       }
     }
 

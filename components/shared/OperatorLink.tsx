@@ -3,20 +3,43 @@
 import Link from "next/link"
 import * as React from "react"
 
-import { useOfflineForNavigation } from "@/hooks/useOfflineForNavigation"
+import { useDocumentNavigation } from "@/hooks/useDocumentNavigation"
 
 export type OperatorLinkProps = React.ComponentProps<typeof Link>
 
+function hrefToPath(href: OperatorLinkProps["href"]): string {
+  if (typeof href === "string") {
+    return href
+  }
+  return href.pathname ?? "/"
+}
+
 /**
- * Next.js client navigation when online; full page load when offline (PWA / airplane mode).
+ * Installed PWA and offline: full document navigation (service worker HTML cache).
+ * Browser tab online: Next.js client navigation.
  */
 export const OperatorLink = React.forwardRef<HTMLAnchorElement, OperatorLinkProps>(
-  function OperatorLink({ href, prefetch, replace, scroll, ...rest }, ref) {
-    const offline = useOfflineForNavigation()
+  function OperatorLink({ href, prefetch, replace, scroll, onClick, ...rest }, ref) {
+    const useDocument = useDocumentNavigation()
+    const path = hrefToPath(href)
 
-    if (offline) {
-      const path = typeof href === "string" ? href : href.pathname ?? "/"
-      return <a ref={ref} href={path} {...rest} />
+    const handleClick = React.useCallback(
+      (event: React.MouseEvent<HTMLAnchorElement>) => {
+        onClick?.(event)
+        if (event.defaultPrevented) {
+          return
+        }
+        if (!useDocument) {
+          return
+        }
+        event.preventDefault()
+        window.location.assign(path)
+      },
+      [onClick, path, useDocument]
+    )
+
+    if (useDocument) {
+      return <a ref={ref} href={path} onClick={handleClick} {...rest} />
     }
 
     return (
@@ -26,6 +49,7 @@ export const OperatorLink = React.forwardRef<HTMLAnchorElement, OperatorLinkProp
         prefetch={prefetch}
         replace={replace}
         scroll={scroll}
+        onClick={onClick}
         {...rest}
       />
     )

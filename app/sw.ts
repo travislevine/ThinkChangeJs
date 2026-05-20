@@ -32,22 +32,26 @@ function isOperatorDocumentPath(pathname: string): boolean {
   return OPERATOR_PATH_SET.has(normalized)
 }
 
+function createOperatorPageRequest(path: string): Request {
+  const url = new URL(path, self.location.origin)
+  return new Request(url.href, {
+    credentials: "same-origin",
+    headers: {
+      Accept: "text/html,application/xhtml+xml",
+    },
+  })
+}
+
 async function populateOperatorPageCache(): Promise<void> {
   const cache = await caches.open(OPERATOR_PAGE_CACHE)
 
   await Promise.all(
     OPERATOR_DOCUMENT_PATHS.map(async (path) => {
       try {
-        const response = await fetch(
-          new Request(path, {
-            credentials: "same-origin",
-            headers: {
-              Accept: "text/html,application/xhtml+xml",
-            },
-          })
-        )
+        const request = createOperatorPageRequest(path)
+        const response = await fetch(request)
         if (response.ok && !response.redirected) {
-          await cache.put(path, response)
+          await cache.put(request, response)
         }
       } catch {
         // Offline activate/install — keep any entries already in the cache.
@@ -79,18 +83,34 @@ class OperatorNavigateHandler extends Strategy {
       return handler.fetch(request)
     }
 
-    const cache = await caches.open(OPERATOR_PAGE_CACHE)
     const normalized = pathname.length > 1 && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname
-    const cached =
-      (await cache.match(normalized, { ignoreSearch: true })) ??
-      (await cache.match(pathname, { ignoreSearch: true })) ??
-      (await cache.match(request, { ignoreSearch: true }))
+    const operatorRequest = createOperatorPageRequest(normalized)
 
-    if (cached) {
-      return cached
+    const operatorCache = await caches.open(OPERATOR_PAGE_CACHE)
+    const fromOperatorCache =
+      (await operatorCache.match(operatorRequest, { ignoreSearch: true })) ??
+      (await operatorCache.match(request, { ignoreSearch: true }))
+
+    if (fromOperatorCache) {
+      return fromOperatorCache
     }
 
-    return handler.fetch(request)
+    const pagesCache = await caches.open(PAGES_CACHE_NAME.html)
+    const fromPagesCache = await pagesCache.match(request, { ignoreSearch: true })
+    if (fromPagesCache) {
+      return fromPagesCache
+    }
+
+    try {
+      return await handler.fetch(request)
+    } catch {
+      const offlineBody =
+        "<!doctype html><html><body><p>BikePark: this page is not available offline yet. Open the app online once while on the dashboard, then try again.</p></body></html>"
+      return new Response(offlineBody, {
+        status: 200,
+        headers: { "Content-Type": "text/html; charset=utf-8" },
+      })
+    }
   }
 }
 
@@ -103,19 +123,8 @@ self.addEventListener("message", (event) => {
 const serwist = new Serwist({
   precacheEntries: [...(self.__SW_MANIFEST ?? []), ...OPERATOR_DOCUMENT_PATHS],
   precacheOptions: {
-    navigateFallback: "/",
-    navigateFallbackDenylist: [
-      /^\/api\//,
-      /^\/_next\//,
-      /^\/sw\.js$/,
-      /^\/park\/?$/,
-      /^\/pickup\/?$/,
-      /^\/pin\/?$/,
-      /^\/check-ticket\/?$/,
-    ],
     ignoreURLParametersMatching: [/^_rsc$/],
   },
-  /** Control the PWA window immediately after a cold launch (offline reopen). */
   clientsClaim: true,
   runtimeCaching: [
     {

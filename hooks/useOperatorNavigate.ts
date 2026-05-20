@@ -2,13 +2,13 @@
 
 import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime"
 
-import { isOfflineForNavigation } from "@/lib/navigation/isOfflineForNavigation"
+import { shouldUseDocumentNavigation } from "@/lib/navigation/shouldUseDocumentNavigation"
 
 /**
- * Client router when online; full document load when offline (airplane mode).
+ * Full document navigation in installed PWA / offline; client router in a browser tab online.
  */
 export function operatorNavigate(router: AppRouterInstance, href: string): void {
-  if (isOfflineForNavigation()) {
+  if (shouldUseDocumentNavigation()) {
     window.location.assign(href)
     return
   }
@@ -16,7 +16,7 @@ export function operatorNavigate(router: AppRouterInstance, href: string): void 
 }
 
 export function operatorReplace(router: AppRouterInstance, href: string): void {
-  if (isOfflineForNavigation()) {
+  if (shouldUseDocumentNavigation()) {
     window.location.replace(href)
     return
   }
