@@ -25,8 +25,6 @@ function asInt(v: unknown): number {
 export type LoadCheckTicketEditStateOk = {
   ok: true
   ticketNumber: number
-  baselineTotal: number
-  baselineRemaining: number
   form: CheckTicketEditFormState
 }
 
@@ -53,8 +51,6 @@ export async function loadCheckTicketEditState(
     )
 
     const num = asInt(ticket.ticket_number)
-    const dbTotal = Math.max(0, asInt(ticket.total_devices))
-    const remaining = Math.max(0, asInt(ticket.devices_remaining))
 
     const expanded = expandDbDevicesToFormRows(devices)
     const deviceRows = expanded.length > 0 ? expanded : [newEmptyDeviceRow()]
@@ -69,8 +65,6 @@ export async function loadCheckTicketEditState(
     return {
       ok: true,
       ticketNumber: num,
-      baselineTotal: dbTotal,
-      baselineRemaining: remaining,
       form,
     }
   } catch (e) {

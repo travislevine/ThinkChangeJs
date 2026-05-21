@@ -13,8 +13,9 @@ import { db } from "@/lib/db/powersync"
 import { loadCheckTicketEditState } from "@/lib/db/loadCheckTicketEditState"
 import type { CheckTicketEditFormState } from "@/lib/types/checkTicketEdit"
 import type { DropOffDeviceRow } from "@/lib/types/dropOffForm"
+import { TICKET_STATUS_CHECKED_IN, TICKET_STATUS_COMPLETED } from "@/lib/constants/ticketStatus"
 import { diffCheckTicketDevices } from "@/lib/utils/checkTicketDeviceDiff"
-import { computeDevicesRemainingAfterTotalChange } from "@/lib/utils/checkTicketDevicesRemaining"
+import { computeDevicesRemainingForEditedDevices } from "@/lib/utils/checkTicketDevicesRemaining"
 import { validateCheckTicketEditForm } from "@/lib/utils/checkTicketEditValidation"
 import { formatPickupDeviceBreakdown } from "@/lib/utils/formatPickupDeviceBreakdown"
 
@@ -44,8 +45,6 @@ export function useEditCheckTicket(): [EditCheckTicketState, EditCheckTicketActi
   const [open, setOpen] = React.useState(false)
   const [ticketId, setTicketId] = React.useState<string | null>(null)
   const [ticketNumber, setTicketNumber] = React.useState<number | null>(null)
-  const [baselineTotal, setBaselineTotal] = React.useState<number>(0)
-  const [baselineRemaining, setBaselineRemaining] = React.useState<number>(0)
   const [baselineDevices, setBaselineDevices] = React.useState<DropOffDeviceRow[]>([])
   const [form, setForm] = React.useState<CheckTicketEditFormState | null>(null)
   const [isSaving, setIsSaving] = React.useState(false)
@@ -77,8 +76,6 @@ export function useEditCheckTicket(): [EditCheckTicketState, EditCheckTicketActi
       if (cancelled) return
       if (result.ok) {
         setTicketNumber(result.ticketNumber)
-        setBaselineTotal(result.baselineTotal)
-        setBaselineRemaining(result.baselineRemaining)
         setBaselineDevices(
           result.form.devices.map((row) => ({
             ...row,
@@ -108,32 +105,80 @@ export function useEditCheckTicket(): [EditCheckTicketState, EditCheckTicketActi
     }
 
     const newTotal = form.devices.length
-    const nextRemaining = computeDevicesRemainingAfterTotalChange(
-      baselineTotal,
-      baselineRemaining,
-      newTotal
-    )
-
     const deviceDiff = diffCheckTicketDevices(baselineDevices, form.devices)
 
     setIsSaving(true)
     setErr(null)
     try {
+      let fullyCheckedOut = false
+
       await db.writeTransaction(async (tx) => {
         const now = Math.floor(Date.now() / 1000)
 
-        await tx.execute(
-          "UPDATE tickets SET patron_name = ?, mobile = ?, email = ?, total_devices = ?, devices_remaining = ? WHERE id = ? AND event_id = ? AND deleted_at IS NULL",
-          [
-            form.patronName.trim() ? form.patronName.trim() : null,
-            form.mobile.trim() ? form.mobile.trim() : null,
-            form.email.trim() ? form.email.trim() : null,
-            newTotal,
-            nextRemaining,
-            ticketId,
-            eventId,
-          ]
+        const pickedRows = await tx.getAll<{
+          device_type: string | null
+          q: number | string | null
+        }>(
+          `SELECT ped.device_type AS device_type, SUM(ped.quantity) AS q
+           FROM pickup_event_devices ped
+           INNER JOIN pickup_events pe ON pe.id = ped.pickup_event_id
+           WHERE pe.ticket_id = ?
+           GROUP BY ped.device_type`,
+          [ticketId]
         )
+        const pickedByType: Record<string, number> = {}
+        for (const row of pickedRows) {
+          const dt = String(row.device_type ?? "Other").trim() || "Other"
+          const n = typeof row.q === "number" ? row.q : Number(row.q)
+          pickedByType[dt] = Math.max(0, Number.isFinite(n) ? Math.floor(n) : 0)
+        }
+
+        const nextRemaining = computeDevicesRemainingForEditedDevices(
+          form.devices,
+          pickedByType
+        )
+        fullyCheckedOut = nextRemaining === 0
+
+        if (fullyCheckedOut) {
+          await tx.execute(
+            "UPDATE tickets SET patron_name = ?, mobile = ?, email = ?, total_devices = ?, devices_remaining = 0, status = ? WHERE id = ? AND event_id = ? AND deleted_at IS NULL",
+            [
+              form.patronName.trim() ? form.patronName.trim() : null,
+              form.mobile.trim() ? form.mobile.trim() : null,
+              form.email.trim() ? form.email.trim() : null,
+              newTotal,
+              TICKET_STATUS_COMPLETED,
+              ticketId,
+              eventId,
+            ]
+          )
+
+          if (ticketNumber !== null) {
+            const pool = await tx.getOptional<{ id: string }>(
+              "SELECT id FROM ticket_numbers WHERE event_id = ? AND number = ? LIMIT 1",
+              [eventId, ticketNumber]
+            )
+            if (pool?.id) {
+              await tx.execute("UPDATE ticket_numbers SET status = 'available' WHERE id = ?", [
+                pool.id,
+              ])
+            }
+          }
+        } else {
+          await tx.execute(
+            "UPDATE tickets SET patron_name = ?, mobile = ?, email = ?, total_devices = ?, devices_remaining = ?, status = ? WHERE id = ? AND event_id = ? AND deleted_at IS NULL",
+            [
+              form.patronName.trim() ? form.patronName.trim() : null,
+              form.mobile.trim() ? form.mobile.trim() : null,
+              form.email.trim() ? form.email.trim() : null,
+              newTotal,
+              nextRemaining,
+              TICKET_STATUS_CHECKED_IN,
+              ticketId,
+              eventId,
+            ]
+          )
+        }
 
         await tx.execute("DELETE FROM devices WHERE ticket_id = ?", [ticketId])
         for (const row of form.devices) {
@@ -170,23 +215,14 @@ export function useEditCheckTicket(): [EditCheckTicketState, EditCheckTicketActi
         }
       })
 
-      success("✓ Ticket updated")
+      success(fullyCheckedOut ? "✓ Ticket fully checked out" : "✓ Ticket updated")
       setOpen(false)
     } catch {
       setErr(INLINE_POWER_SYNC_SAVE_FAILED)
     } finally {
       setIsSaving(false)
     }
-  }, [
-    baselineDevices,
-    baselineRemaining,
-    baselineTotal,
-    eventId,
-    form,
-    success,
-    ticketId,
-    toastError,
-  ])
+  }, [baselineDevices, eventId, form, success, ticketId, ticketNumber, toastError])
 
   const isLoading = Boolean(open && ticketId && eventId && !form && !err)
 
