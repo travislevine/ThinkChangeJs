@@ -14,6 +14,7 @@ import { toAppSyncState, toLastSyncedAt } from "@/lib/sync/appSyncState"
 import { formatSyncFlowError } from "@/lib/sync/formatSyncFlowError"
 import {
   reconnectPowerSyncNow,
+  scheduleDebouncedPowerSyncCatchUp,
   scheduleDebouncedPowerSyncReconnect,
 } from "@/lib/sync/powerSyncReconnect"
 import type { SyncState } from "@/lib/types/sync"
@@ -122,11 +123,11 @@ export function SyncStatusProvider({ children }: { children: React.ReactNode }) 
     }
   }, [])
 
-  /** Phase 6.3 — tab visible again: coalesced reconnect so downloads/uploads catch up. */
+  /** Phase 6.3 — tab visible again: connect or error-retry only (avoid full reconnect when healthy). */
   React.useEffect(() => {
     const onVisibility = (): void => {
       if (document.visibilityState === "visible") {
-        scheduleDebouncedPowerSyncReconnect()
+        scheduleDebouncedPowerSyncCatchUp()
       }
     }
     document.addEventListener("visibilitychange", onVisibility)
@@ -190,7 +191,7 @@ export function SyncStatusProvider({ children }: { children: React.ReactNode }) 
   const requestSync = retrySync
 
   const scheduleSyncReconnect = React.useCallback(() => {
-    scheduleDebouncedPowerSyncReconnect()
+    scheduleDebouncedPowerSyncCatchUp()
   }, [])
 
   const powerSync = React.useMemo(

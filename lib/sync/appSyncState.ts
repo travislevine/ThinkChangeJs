@@ -18,6 +18,10 @@ export function toAppSyncState(online: boolean, status: SyncStatus): SyncState {
     return "pending"
   }
 
+  if (status.hasSynced === false) {
+    return "syncing"
+  }
+
   const downloading = dataFlow?.downloading ?? false
   const uploading = dataFlow?.uploading ?? false
   if (downloading || uploading) {

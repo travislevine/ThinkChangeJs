@@ -14,6 +14,7 @@ import { consolidateDuplicateActiveEvents } from "@/lib/db/reconcileActiveEvents
 import { seedTicketPoolIfEmpty } from "@/lib/db/seedTicketPool"
 import { getOrCreateDeviceUuid } from "@/lib/deviceUuid"
 import { isAppleWebKit } from "@/lib/platform/isAppleWebKit"
+import { waitForCloudBeforePoolSeed } from "@/lib/sync/waitForCloudBeforePoolSeed"
 
 const PowerSyncReadyContext = React.createContext(false)
 
@@ -49,7 +50,7 @@ export function PowerSyncProvider({ children }: PowerSyncProviderProps) {
       }
       if (cancelled) return
 
-      // Show the UI as soon as the local DB is open — do not block on cloud sync (Safari is slow).
+      // Show the UI as soon as the local DB is open — cloud sync continues in the background.
       setInitError(null)
       setReady(true)
 
@@ -60,18 +61,7 @@ export function PowerSyncProvider({ children }: PowerSyncProviderProps) {
         if (cancelled) return
 
         if (syncResult.ok && database.connected) {
-          try {
-            const firstSync = new AbortController()
-            const timeoutMs = isAppleWebKit() ? 4_000 : 12_000
-            const timeout = window.setTimeout(() => firstSync.abort(), timeoutMs)
-            try {
-              await database.waitForFirstSync(firstSync.signal)
-            } finally {
-              window.clearTimeout(timeout)
-            }
-          } catch {
-            // Sync continues in the background via PowerSync listeners.
-          }
+          await waitForCloudBeforePoolSeed(database)
         }
 
         if (cancelled) return
