@@ -3,7 +3,10 @@
 import * as React from "react"
 import { useRouter } from "next/navigation"
 
+import { usePowerSyncReady } from "@/components/shared/PowerSyncProvider"
+import { useSyncStatus } from "@/contexts/SyncStatusContext"
 import { OPERATOR_ROUTES } from "@/lib/constants/operatorRoutes"
+import { OFFLINE_ROUTE_WARM_DEFER_MS } from "@/lib/constants/sync"
 import {
   areOperatorPagesCached,
   cacheOperatorPagesInBrowser,
@@ -47,10 +50,11 @@ async function warmRoute(path: string, router: ReturnType<typeof useRouter>): Pr
 }
 
 /**
- * While online, cache operator HTML for cold-start offline (installed PWA).
- * Retries until all routes are in `bikepark-operator-pages` when running as installed app.
+ * Caches operator HTML for cold-start offline (installed PWA).
+ * Deferred until PowerSync finishes its first sync so iPad first load is not competing
+ * with route/HTML/RSC fetches on the same connection.
  */
-export function OfflineRouteWarmer(): null {
+function OfflineRouteWarmerInner(): null {
   const router = useRouter()
 
   React.useEffect(() => {
@@ -112,6 +116,36 @@ export function OfflineRouteWarmer(): null {
   }, [router])
 
   return null
+}
+
+export function OfflineRouteWarmer(): React.ReactElement | null {
+  const ready = usePowerSyncReady()
+  const { syncState } = useSyncStatus()
+  const [mayWarm, setMayWarm] = React.useState(false)
+
+  React.useEffect(() => {
+    if (!ready) {
+      return
+    }
+    if (syncState === "connected") {
+      setMayWarm(true)
+      return
+    }
+
+    const timer = window.setTimeout(() => {
+      setMayWarm(true)
+    }, OFFLINE_ROUTE_WARM_DEFER_MS)
+
+    return () => {
+      window.clearTimeout(timer)
+    }
+  }, [ready, syncState])
+
+  if (!mayWarm) {
+    return null
+  }
+
+  return <OfflineRouteWarmerInner />
 }
 
 OfflineRouteWarmer.displayName = "OfflineRouteWarmer"

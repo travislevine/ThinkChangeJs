@@ -67,7 +67,17 @@ export function PowerSyncProvider({ children }: PowerSyncProviderProps) {
         if (cancelled) return
         await seedTicketPoolIfEmpty(database)
         if (cancelled) return
-        await consolidateDuplicateActiveEvents(database)
+
+        const runConsolidate = (): void => {
+          if (!cancelled) {
+            void consolidateDuplicateActiveEvents(database)
+          }
+        }
+        if (typeof requestIdleCallback === "function") {
+          requestIdleCallback(runConsolidate)
+        } else {
+          window.setTimeout(runConsolidate, 3_000)
+        }
       })()
     })()
 

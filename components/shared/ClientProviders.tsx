@@ -78,10 +78,10 @@ export function ClientProviders({ children, toast }: ClientProvidersProps) {
     >
       <ThemeProvider>
         <TooltipProvider delayDuration={300}>
-          <OfflineRouteWarmer />
           <PowerSyncProvider>
             <EventProvider>
               <SyncStatusProvider>
+                <OfflineRouteWarmer />
                 <PinAuthProvider>
                   <AuthGuard>
                     <DevServiceWorkerCleanup />

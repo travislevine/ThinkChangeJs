@@ -30,16 +30,22 @@ function dotClasses(state: SyncState): string {
   }
 }
 
-function formatLastSyncedAt(lastSyncedAt: Date | null): string {
-  if (!lastSyncedAt) return "Never synced"
-  return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(
-    lastSyncedAt
-  )
+function formatLastSyncedSubtitle(syncState: SyncState, lastSyncedAt: Date | null): string {
+  if (lastSyncedAt) {
+    return new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(
+      lastSyncedAt
+    )
+  }
+  if (syncState === "syncing" || syncState === "pending") {
+    return "First sync in progress"
+  }
+  return "Not synced yet"
 }
 
 export function SyncStatusIndicator() {
   const { syncState, lastSyncedAt } = useSyncStatus()
   const label = syncLabel(syncState)
+  const subtitle = formatLastSyncedSubtitle(syncState, lastSyncedAt)
 
   return (
     <div className="flex items-center gap-3">
@@ -48,7 +54,7 @@ export function SyncStatusIndicator() {
         <span className="text-sm font-medium text-emerald-900 dark:text-emerald-50">{label}</span>
       </span>
       <span className="hidden text-xs text-emerald-800/80 sm:inline dark:text-emerald-100/80">
-        {formatLastSyncedAt(lastSyncedAt)}
+        {subtitle}
       </span>
     </div>
   )
