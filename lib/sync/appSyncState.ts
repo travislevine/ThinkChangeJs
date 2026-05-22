@@ -11,11 +11,8 @@ export function toAppSyncState(online: boolean, status: SyncStatus): SyncState {
   if (dataFlow?.downloadError || dataFlow?.uploadError) {
     return "pending"
   }
-  if (status.connecting) {
-    return "pending"
-  }
   if (!status.connected) {
-    return "pending"
+    return status.connecting ? "syncing" : "pending"
   }
 
   if (status.hasSynced === false) {

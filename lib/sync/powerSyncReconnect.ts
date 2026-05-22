@@ -39,7 +39,9 @@ export async function reconnectPowerSyncNow(): Promise<void> {
 }
 
 /**
- * After tab focus: connect if needed, or full reconnect only when the pipeline reports errors.
+ * After tab focus: full reconnect when disconnected, stuck connecting, or pipeline errors.
+ * `ensurePowerSyncConnected` is not used here — it no-ops while `connecting` is true and can leave
+ * the UI on "Pending sync" indefinitely after an offline period.
  */
 export async function catchUpPowerSyncAfterVisibility(): Promise<void> {
   if (typeof window === "undefined") {
@@ -47,15 +49,23 @@ export async function catchUpPowerSyncAfterVisibility(): Promise<void> {
   }
 
   const status = db.currentStatus
-  if (!status.connected && !status.connecting) {
-    await ensurePowerSyncConnected()
-    return
-  }
-
   const flow = status.dataFlowStatus
-  if (flow?.downloadError != null || flow?.uploadError != null) {
+  const hasFlowError = flow?.downloadError != null || flow?.uploadError != null
+
+  if (!status.connected || hasFlowError) {
     await reconnectPowerSyncNow()
   }
+}
+
+/**
+ * After connectivity is restored (probe or `online` event). Always reconnect so uploads queued
+ * offline are flushed and stale WebSocket / error states are cleared (iOS PWA often skips `online`).
+ */
+export async function reconnectPowerSyncAfterNetworkRestore(): Promise<void> {
+  if (typeof window === "undefined") {
+    return
+  }
+  await reconnectPowerSyncNow()
 }
 
 /**
@@ -72,7 +82,7 @@ export function scheduleDebouncedPowerSyncCatchUp(): void {
 }
 
 /**
- * Coalesce rapid triggers into a full reconnect — use after a confirmed offline gap.
+ * Coalesce rapid triggers into a full reconnect — use after connectivity returns.
  */
 export function scheduleDebouncedPowerSyncReconnect(): void {
   if (debounceTimer != null) {
@@ -80,6 +90,6 @@ export function scheduleDebouncedPowerSyncReconnect(): void {
   }
   debounceTimer = setTimeout(() => {
     debounceTimer = null
-    void reconnectPowerSyncNow()
+    void reconnectPowerSyncAfterNetworkRestore()
   }, DEBOUNCE_MS)
 }

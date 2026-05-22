@@ -123,7 +123,7 @@ export function SyncStatusProvider({ children }: { children: React.ReactNode }) 
     }
   }, [])
 
-  /** Phase 6.3 — tab visible again: connect or error-retry only (avoid full reconnect when healthy). */
+  /** Phase 6.3 — tab visible again: reconnect if disconnected / errors (not when already healthy). */
   React.useEffect(() => {
     const onVisibility = (): void => {
       if (document.visibilityState === "visible") {
@@ -136,23 +136,30 @@ export function SyncStatusProvider({ children }: { children: React.ReactNode }) 
     }
   }, [])
 
-  /** Phase 6.3 — browser reports network back: reconnect after offline gap. */
-  const wasOfflineRef = React.useRef(typeof navigator !== "undefined" ? !navigator.onLine : false)
+  /**
+   * Connectivity probe + `online` event → `isOnline`. iOS installed PWAs often skip `offline`/`online`
+   * in airplane mode, so we must reconnect when `isOnline` flips false → true, not only on `online`.
+   */
+  const prevIsOnlineRef = React.useRef<boolean | null>(null)
+  React.useEffect(() => {
+    if (prevIsOnlineRef.current === null) {
+      prevIsOnlineRef.current = isOnline
+      return
+    }
+    if (!prevIsOnlineRef.current && isOnline) {
+      scheduleDebouncedPowerSyncReconnect()
+    }
+    prevIsOnlineRef.current = isOnline
+  }, [isOnline])
+
+  /** `online` may fire before the ping probe updates `isOnline` — always schedule reconnect. */
   React.useEffect(() => {
     const onOnline = (): void => {
-      if (wasOfflineRef.current) {
-        wasOfflineRef.current = false
-        scheduleDebouncedPowerSyncReconnect()
-      }
-    }
-    const onOffline = (): void => {
-      wasOfflineRef.current = true
+      scheduleDebouncedPowerSyncReconnect()
     }
     window.addEventListener("online", onOnline)
-    window.addEventListener("offline", onOffline)
     return () => {
       window.removeEventListener("online", onOnline)
-      window.removeEventListener("offline", onOffline)
     }
   }, [])
 
