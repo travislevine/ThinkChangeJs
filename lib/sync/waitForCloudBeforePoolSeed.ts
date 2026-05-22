@@ -8,7 +8,19 @@ import {
 } from "@/lib/constants/sync"
 
 async function getLocalTicketNumberCount(database: AbstractPowerSyncDatabase): Promise<number> {
-  const row = await database.getOptional<{ c: number }>("SELECT COUNT(*) as c FROM ticket_numbers")
+  const active = await database.getOptional<{ id: string }>(
+    "SELECT id FROM events WHERE is_active = 1 ORDER BY started_at DESC LIMIT 1"
+  )
+  if (!active?.id) {
+    const row = await database.getOptional<{ c: number }>(
+      "SELECT COUNT(*) as c FROM ticket_numbers"
+    )
+    return Number(row?.c ?? 0)
+  }
+  const row = await database.getOptional<{ c: number }>(
+    "SELECT COUNT(*) as c FROM ticket_numbers WHERE event_id = ?",
+    [active.id]
+  )
   return Number(row?.c ?? 0)
 }
 

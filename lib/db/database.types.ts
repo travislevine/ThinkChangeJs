@@ -214,7 +214,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      bikepark_seed_ticket_pool: {
+        Args: {
+          p_event_id: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

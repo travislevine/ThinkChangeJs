@@ -5,7 +5,7 @@ import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.
 import { shouldUseDocumentNavigation } from "@/lib/navigation/shouldUseDocumentNavigation"
 
 /**
- * Full document navigation in installed PWA / offline; client router in a browser tab online.
+ * Document navigation when offline, or installed Android PWA; client router in browser / iOS PWA online.
  */
 export function operatorNavigate(router: AppRouterInstance, href: string): void {
   if (shouldUseDocumentNavigation()) {
