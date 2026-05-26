@@ -2,6 +2,8 @@ import { BIKEPARK_RATING_SURVEY_URL } from "@/lib/constants/sms"
 import { DEVICE_CATEGORIES } from "@/lib/constants/deviceCategories"
 import type { SmsMessageVariant, SmsPicksByType } from "@/lib/types/sendSms"
 import { formatCheckTicketTimestamp } from "@/lib/utils/checkTicketFormat"
+import { formatPickupDeviceBreakdown } from "@/lib/utils/formatPickupDeviceBreakdown"
+import type { PickupTicketDeviceLine } from "@/lib/types/pickup"
 
 function smsPatronGreeting(patronName: string | null): string {
   return patronName !== null && patronName.trim().length > 0
@@ -60,6 +62,22 @@ export interface BuildSmsMessageBodyParams {
   pickedUpAtSeconds?: number
   picksByType?: SmsPicksByType
   allDevicesPickedUp?: boolean
+}
+
+/** BikePark pre-registration confirmation SMS (public /pre-register form). */
+export function buildBikeParkPreRegisteredSmsBody(
+  patronName: string | null,
+  deviceLines: PickupTicketDeviceLine[]
+): string {
+  const greeting = smsPatronGreeting(patronName)
+  const breakdown = formatPickupDeviceBreakdown(deviceLines)
+  const deviceLine = breakdown ? `Devices: ${breakdown}` : "Devices: see your registration"
+
+  return [
+    `Hi ${greeting}, you're pre-registered at BikePark.`,
+    deviceLine,
+    "Present your details at drop-off to receive your ticket number.",
+  ].join("\n")
 }
 
 /** BikePark ready-for-collection SMS (Check Ticket manual send). */

@@ -70,18 +70,32 @@ export function useCreateDropOffTicket(): CreateDropOffTicketResult {
 
           await tx.execute("UPDATE ticket_numbers SET status = 'in_use' WHERE id = ?", [pool.id])
 
-          const existing = await tx.getOptional<{ id: string }>(
-            "SELECT id FROM tickets WHERE event_id = ? AND ticket_number = ? AND status = 'pre_registered' AND deleted_at IS NULL LIMIT 1",
-            [currentEvent.id, ticketNumber]
-          )
+          const preRegisteredId = state.preRegisteredTicketId?.trim() ?? ""
+          let existing: { id: string } | null = null
+
+          if (preRegisteredId) {
+            existing = await tx.getOptional<{ id: string }>(
+              "SELECT id FROM tickets WHERE id = ? AND event_id = ? AND status = 'pre_registered' AND deleted_at IS NULL LIMIT 1",
+              [preRegisteredId, currentEvent.id]
+            )
+            if (!existing?.id) {
+              throw new Error("Pre-registered patron not found.")
+            }
+          } else {
+            existing = await tx.getOptional<{ id: string }>(
+              "SELECT id FROM tickets WHERE event_id = ? AND ticket_number = ? AND status = 'pre_registered' AND deleted_at IS NULL LIMIT 1",
+              [currentEvent.id, ticketNumber]
+            )
+          }
 
           const ticketId = existing?.id ?? newTicketId
           usedTicketId = ticketId
 
           if (existing?.id) {
             await tx.execute(
-              "UPDATE tickets SET patron_name = ?, mobile = ?, email = ?, total_devices = ?, devices_remaining = ?, status = 'checked_in', device_id = ? WHERE id = ?",
+              "UPDATE tickets SET ticket_number = ?, patron_name = ?, mobile = ?, email = ?, total_devices = ?, devices_remaining = ?, status = 'checked_in', device_id = ? WHERE id = ?",
               [
+                ticketNumber,
                 state.patronName.trim() ? state.patronName.trim() : null,
                 state.mobile.trim() ? state.mobile.trim() : null,
                 state.email.trim() ? state.email.trim() : null,

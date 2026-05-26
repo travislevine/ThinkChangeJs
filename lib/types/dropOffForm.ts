@@ -17,4 +17,6 @@ export interface DropOffBlankEntryFormState {
   email: string
   devices: DropOffDeviceRow[]
   notes: string
+  /** Set when drop-off started from Pre-Registered select (ticket may have no number yet). */
+  preRegisteredTicketId?: string
 }

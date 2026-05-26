@@ -89,6 +89,7 @@ export function PreRegisteredList({ onSelect }: PreRegisteredListProps) {
         const prefill: DropOffBlankEntryFormState = {
           ...defaultPrefill(),
           ...base,
+          preRegisteredTicketId: ticketId,
           devices:
             devices.length > 0
               ? expandDbDevicesToFormRows(devices)

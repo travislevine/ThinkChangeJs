@@ -8,6 +8,8 @@ import { SyncFailureBanner } from "@/components/shared/SyncFailureBanner"
 import { usePinAuth } from "@/hooks/usePinAuth"
 import { operatorReplace } from "@/hooks/useOperatorNavigate"
 
+const PUBLIC_PATHS = new Set(["/pin", "/pre-register"])
+
 export interface AuthGuardProps {
   children: React.ReactNode
 }
@@ -16,18 +18,18 @@ export function AuthGuard({ children }: AuthGuardProps) {
   const pathname = usePathname()
   const router = useRouter()
   const { ready, isAuthorised } = usePinAuth()
+  const isPublicPath = PUBLIC_PATHS.has(pathname)
 
   React.useEffect(() => {
     if (!ready) return
-    if (!isAuthorised && pathname !== "/pin") {
+    if (!isAuthorised && !isPublicPath) {
       const next = encodeURIComponent(pathname || "/")
       operatorReplace(router, `/pin?next=${next}`)
     }
-  }, [ready, isAuthorised, pathname, router])
+  }, [ready, isAuthorised, isPublicPath, pathname, router])
 
-  // Never guard the PIN page; otherwise you can end up with a blank screen
-  // during redirects/hydration.
-  if (pathname === "/pin") {
+  // Public routes are never PIN-guarded.
+  if (isPublicPath) {
     return <>{children}</>
   }
 
