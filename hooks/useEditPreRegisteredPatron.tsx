@@ -149,12 +149,39 @@ export function useEditPreRegisteredPatron(): [EditPreRegisteredState, EditPreRe
     setErr(null)
     try {
       await db.writeTransaction(async (tx) => {
-        const conflict = await tx.getOptional<{ id: string }>(
-          "SELECT id FROM tickets WHERE event_id = ? AND ticket_number = ? AND deleted_at IS NULL AND id <> ? LIMIT 1",
-          [eventId, ticketNumber, ticketId]
+        const current = await tx.getOptional<{ ticket_number: number | null }>(
+          "SELECT ticket_number FROM tickets WHERE id = ? AND event_id = ? AND deleted_at IS NULL LIMIT 1",
+          [ticketId, eventId]
         )
-        if (conflict?.id) {
-          throw new Error(`Ticket #${ticketNumber} is already used by another record.`)
+        if (!current) {
+          throw new Error("Patron not found.")
+        }
+
+        const pool = await tx.getOptional<{ id: string; status: string }>(
+          "SELECT id, status FROM ticket_numbers WHERE event_id = ? AND number = ? LIMIT 1",
+          [eventId, ticketNumber]
+        )
+        if (!pool?.id) {
+          throw new Error("Ticket number not found in pool.")
+        }
+        if (pool.status === "in_use") {
+          throw new Error(`Ticket #${ticketNumber} is already in use.`)
+        }
+
+        const previousTicketNumber =
+          current.ticket_number === null || current.ticket_number === undefined
+            ? null
+            : Number(current.ticket_number)
+        const hasPrevious =
+          previousTicketNumber !== null && Number.isFinite(previousTicketNumber) && previousTicketNumber > 0
+
+        // Reserve new number, release old one (if any and changed).
+        await tx.execute("UPDATE ticket_numbers SET status = 'in_use' WHERE id = ?", [pool.id])
+        if (hasPrevious && previousTicketNumber !== ticketNumber) {
+          await tx.execute(
+            "UPDATE ticket_numbers SET status = 'available' WHERE event_id = ? AND number = ?",
+            [eventId, previousTicketNumber]
+          )
         }
 
         await tx.execute(
@@ -189,7 +216,7 @@ export function useEditPreRegisteredPatron(): [EditPreRegisteredState, EditPreRe
       setOpen(false)
     } catch (e) {
       const message = e instanceof Error ? e.message : ""
-      if (message.includes("already used by another record")) {
+      if (message.includes("already in use")) {
         setErr(message)
         toastError(message)
       } else {
@@ -207,6 +234,21 @@ export function useEditPreRegisteredPatron(): [EditPreRegisteredState, EditPreRe
     try {
       const name = form?.patronName?.trim() || "Patron"
       await db.writeTransaction(async (tx) => {
+        const current = await tx.getOptional<{ ticket_number: number | null }>(
+          "SELECT ticket_number FROM tickets WHERE id = ? AND event_id = ? AND deleted_at IS NULL LIMIT 1",
+          [ticketId, eventId]
+        )
+        const currentTicketNumber =
+          current?.ticket_number === null || current?.ticket_number === undefined
+            ? null
+            : Number(current.ticket_number)
+        if (currentTicketNumber !== null && Number.isFinite(currentTicketNumber) && currentTicketNumber > 0) {
+          await tx.execute(
+            "UPDATE ticket_numbers SET status = 'available' WHERE event_id = ? AND number = ?",
+            [eventId, currentTicketNumber]
+          )
+        }
+
         const now = Math.floor(Date.now() / 1000)
         await tx.execute("UPDATE tickets SET deleted_at = ? WHERE id = ?", [now, ticketId])
       })
