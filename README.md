@@ -1,36 +1,44 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# BikePark (Sunshine Coast Council — ThinkChange)
 
-## Getting Started
+BikePark is a web app designed for **community events** where Sunshine Coast Council provides free, secure parking for bicycles and other micromobility devices (e.g. e-bikes, scooters, prams).
 
-First, run the development server:
+It supports the full on-the-day workflow:
+- **Patron pre-registration** (public form) to speed up drop-off
+- **Operator check-in (drop-off)** with device details and a physical ticket/tag number
+- **Operator pick-up** (partial or complete collections)
+- **Ticket lookup** with notes and history
+- **CSV export** for event reporting (protected by an export PIN)
+
+The app is built to keep working even when event Wi‑Fi is unreliable (it saves to the device first, then syncs when online).
+
+## Live demo
+
+- **Demo site:** `https://think-change-js.vercel.app/pin?next=%2F`
+- **Patron pre-registration page:** `https://think-change-js.vercel.app/pre-register`
+
+## Run locally
+
+First, install dependencies:
+
+```bash
+npm install
+```
+
+Then run the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Pages
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **Operator app (PIN protected):** `/pin`, `/`, `/park`, `/pickup`, `/check-ticket`
+- **Public patron form:** `/pre-register`
 
-## Learn More
+## Notes for reviewers
 
-To learn more about Next.js, take a look at the following resources:
+- This repository contains both the **operator** experience (used on the day) and the **patron** pre-registration form.
+- SMS and cloud services in the hosted demo run in a **demo/trial** configuration (council production setup is a separate operational step).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
